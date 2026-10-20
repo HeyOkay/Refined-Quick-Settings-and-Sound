@@ -2,7 +2,9 @@
 #ifndef WH_WINRT_WINUI2
 #define WH_WINRT_WINUI2
 #endif
+#include <winsock2.h>
 #include <windows.h>
+#include <shellapi.h>
 #include <windhawk_utils.h>
 #include <xamlom.h>
 #include <ocidl.h>

@@ -6,7 +6,7 @@ $oldTemp=$env:TEMP;$oldTmp=$env:TMP;$oldPath=$env:PATH
 $env:TEMP=$testTemp;$env:TMP=$testTemp
 Push-Location 'C:/Program Files/Windhawk/Compiler'
 try{
- & './bin/clang++.exe' '-std=c++23' '-O1' '-DUNICODE' '-D_UNICODE' '-target' 'x86_64-w64-mingw32' (Join-Path $root 'model-tests.cpp') '-lole32' '-loleaut32' '-lruntimeobject' '-o' (Join-Path $root 'model-tests.exe')
+ & './bin/clang++.exe' '-std=c++23' '-O1' '-DUNICODE' '-D_UNICODE' '-DWIN32_LEAN_AND_MEAN' '-target' 'x86_64-w64-mingw32' (Join-Path $root 'model-tests.cpp') '-lole32' '-loleaut32' '-lruntimeobject' '-o' (Join-Path $root 'model-tests.exe')
  if($LASTEXITCODE){throw "Test compilation failed: $LASTEXITCODE"}
  # Windhawk's compiler links its runtime with the .whl suffix.
  $env:PATH='C:/ProgramData/Windhawk/Engine/Mods/64;'+$oldPath

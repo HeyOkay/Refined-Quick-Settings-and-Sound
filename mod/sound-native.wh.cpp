@@ -9,7 +9,7 @@
 // @include ShellHost.exe
 // @include ShellExperienceHost.exe
 // @architecture x86-64
-// @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lversion -luuid
+// @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lversion -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
 // ==WindhawkModReadme==
