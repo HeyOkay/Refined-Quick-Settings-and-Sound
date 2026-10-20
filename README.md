@@ -37,7 +37,7 @@ Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64 (ARM64 is 
 
 The mixer starts collapsed on the first Sound opening in each ShellHost process; subsequent openings remember its state. Disable other mods or styling rules that modify the same Quick Settings, Sound or taskbar volume elements.
 
-**Incompatible with Windows 11 Notification Center Styler and UWPSpy** (and other tools that attach to XAML Diagnostics in ShellHost). The mod finds the Quick Settings and Sound pages through XAML Diagnostics, and Windows allows only one diagnostics connection per process: whichever tool connects first keeps it, and the other cannot attach. The mod releases the connection once the pages are found, but reconnects when the shell rebuilds the panel. Moving to ControlCenter.dll symbol hooks may come in a future update.
+Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll and the public XAML visual tree; it does not open a XAML Diagnostics connection. Compatibility with other mods that edit the same controls still requires live testing. If the panel was already open when enabling this candidate, close and reopen it; restart ShellHost if it is not picked up.
 
 ## Installation from source
 
@@ -64,4 +64,4 @@ Stop-Process -Name ShellHost -Force
 
 ## Licenses
 
-The mod is [GPL-3.0-only](LICENSE). The XAML Diagnostics connection approach follows m417z's Notification Center Styler (GPL-3.0); the hidden-apps parser is adapted from the Sound Output Direct and Taller mod. Lucide icons are ISC licensed, see [third-party notices](docs/THIRD-PARTY-NOTICES.md) and `mod/LUCIDE-LICENSE.txt`.
+The mod is [GPL-3.0-only](LICENSE). The UI-thread dispatch technique follows m417z's Notification Center Styler (GPL-3.0); the hidden-apps parser is adapted from the Sound Output Direct and Taller mod. Lucide icons are ISC licensed, see [third-party notices](docs/THIRD-PARTY-NOTICES.md) and `mod/LUCIDE-LICENSE.txt`.

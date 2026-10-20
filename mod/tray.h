@@ -980,8 +980,15 @@ inline void Shutdown() {
   // The no_destroy globals give their contents back here, not at process exit.
   {
     std::lock_guard lock(recordsMutex);
-    records.clear();
-    records.shrink_to_fit();
+    if (records.empty())
+      records.shrink_to_fit();
+    else {
+      HMODULE retained = nullptr;
+      GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                          reinterpret_cast<LPCWSTR>(&Shutdown), &retained);
+      Wh_Log(L"Retaining %zu tray records and the module: their UI thread was not reached",
+               records.size());
+    }
   }
   audio.reset();
 }

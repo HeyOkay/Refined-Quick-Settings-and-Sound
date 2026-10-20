@@ -1,80 +1,133 @@
 #pragma once
 #include "bridge.h"
 namespace native {
-using OpenKey = decltype(&RegOpenKeyExW);
-inline OpenKey originalOpenKey = nullptr;
-using QueryValue = decltype(&RegQueryValueExW);
-inline QueryValue originalQueryValue = nullptr;
-inline LSTATUS WINAPI OpenKeyHook(HKEY key, LPCWSTR sub, DWORD options, REGSAM access,
-                                  PHKEY result) {
-  auto status = originalOpenKey(key, sub, options, access, result);
-  if (status != ERROR_SUCCESS && compositionDisabled && key == HKEY_LOCAL_MACHINE && sub &&
-      !_wcsicmp(sub, L"Software\\Microsoft\\XAML\\Debug"))
-    return originalOpenKey(key, L"Software\\Microsoft", options, access, result);
-  return status;
-}
-inline LSTATUS WINAPI QueryValueHook(HKEY key, LPCWSTR name, LPDWORD reserved, LPDWORD type,
-                                     LPBYTE data, LPDWORD bytes) {
-  if (!compositionDisabled || !name || _wcsicmp(name, L"DisableCompositionDiag"))
-    return originalQueryValue(key, name, reserved, type, data, bytes);
-  if (type)
-    *type = REG_DWORD;
-  if (data && (!bytes || *bytes < sizeof(DWORD))) {
-    if (bytes)
-      *bytes = sizeof(DWORD);
-    return ERROR_MORE_DATA;
+// Discovery uses only COM produce<> entry points, never the implementation's
+// partially constructed `this`. Pattern validated in ControlCenter.pdb.
+using Focus = int(WINAPI *)(void *, void *);
+using Connect = int(WINAPI *)(void *, int, void *);
+inline Focus originalViewFocus = nullptr, originalPageFocus = nullptr;
+inline Connect originalViewConnect = nullptr, originalPageConnect = nullptr;
+inline std::atomic<int> discoveryState{0}; // 0 waiting, 1 installing, 2 ready, 3 failed
+inline std::mutex discoveryMutex;
+inline std::mutex discoveryInstallMutex;
+inline thread_local bool insideDiscovery = false;
+inline void Discovered(void *object, bool deferred) noexcept {
+  if (!object || stopping || insideDiscovery)
+    return;
+  insideDiscovery = true;
+  try {
+    X::FrameworkElement element{nullptr};
+    if (SUCCEEDED(static_cast<::IUnknown *>(object)->QueryInterface(
+            winrt::guid_of<X::FrameworkElement>(), winrt::put_abi(element))) &&
+        element) {
+      {
+        // Unload crosses this lock before taking the runtime snapshot. It is
+        // never held while the engine waits for work on the UI thread.
+        std::lock_guard lock(discoveryMutex);
+        if (!stopping && !runtime)
+          runtime = std::make_unique<Runtime>(element);
+      }
+      if (!stopping && runtime) {
+        if (deferred)
+          runtime->QueueDiscovery(element);
+        else
+          runtime->Discover(element);
+      }
+    }
+  } catch (...) {
+    Wh_Log(L"ControlCenter symbol callback: %08X", winrt::to_hresult());
   }
-  if (data)
-    *reinterpret_cast<DWORD *>(data) = 1;
-  if (bytes)
-    *bytes = sizeof(DWORD);
-  return ERROR_SUCCESS;
+  insideDiscovery = false;
 }
-inline void WindowCreated(HWND window, LPCWSTR name) {
-  if (window && reinterpret_cast<ULONG_PTR>(name) > 0xffff &&
-      (!_wcsicmp(name, L"ControlCenterWindow") || !_wcsicmp(name, L"Windows.UI.Core.CoreWindow")) &&
-      !runtime)
-    StartBridge();
+inline int WINAPI ViewFocus(void *self, void *args) {
+  auto result = originalViewFocus(self, args);
+  Discovered(self, false);
+  return result;
 }
-using CreateBand = HWND(WINAPI *)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU,
-                                  HINSTANCE, void *, DWORD);
-using CreateBandEx = HWND(WINAPI *)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU,
-                                    HINSTANCE, void *, DWORD, DWORD);
-inline CreateBand originalBand = nullptr;
-inline CreateBandEx originalBandEx = nullptr;
-inline HWND WINAPI Band(DWORD ex, LPCWSTR type, LPCWSTR title, DWORD style, int x, int y, int w,
-                        int h, HWND parent, HMENU menu, HINSTANCE instance, void *param,
-                        DWORD band) {
-  auto window =
-      originalBand(ex, type, title, style, x, y, w, h, parent, menu, instance, param, band);
-  WindowCreated(window, type);
-  return window;
+inline int WINAPI PageFocus(void *self, void *args) {
+  auto result = originalPageFocus(self, args);
+  Discovered(self, false);
+  return result;
 }
-inline HWND WINAPI BandEx(DWORD ex, LPCWSTR type, LPCWSTR title, DWORD style, int x, int y, int w,
-                          int h, HWND parent, HMENU menu, HINSTANCE instance, void *param,
-                          DWORD band, DWORD flags) {
-  auto window = originalBandEx(ex, type, title, style, x, y, w, h, parent, menu, instance, param,
-                               band, flags);
-  WindowCreated(window, type);
-  return window;
+inline int WINAPI ViewConnect(void *self, int id, void *target) {
+  auto result = originalViewConnect(self, id, target);
+  Discovered(target, true);
+  return result;
+}
+inline int WINAPI PageConnect(void *self, int id, void *target) {
+  auto result = originalPageConnect(self, id, target);
+  Discovered(target, true);
+  return result;
+}
+inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
+  std::lock_guard installLock(discoveryInstallMutex);
+  if (stopping)
+    return false;
+  int expected = 0;
+  if (!discoveryState.compare_exchange_strong(expected, 1))
+    return expected != 3;
+  WindhawkUtils::SYMBOL_HOOK controlCenterDllHooks[] = {
+      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
+       &originalViewFocus,
+       ViewFocus},
+      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
+       &originalViewConnect,
+       ViewConnect,
+       true},
+      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
+       &originalPageFocus,
+       PageFocus,
+       true},
+      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
+       &originalPageConnect,
+       PageConnect,
+       true},
+  };
+  bool ok = WindhawkUtils::HookSymbols(controlCenter, controlCenterDllHooks,
+                                       ARRAYSIZE(controlCenterDllHooks));
+  if (ok && applyNow)
+    ok = Wh_ApplyHookOperations();
+  discoveryState = ok ? 2 : 3;
+  Wh_Log(L"ControlCenter.dll discovery hooks: %s", ok ? L"ready" : L"failed");
+  return ok;
+}
+using HostLoad = decltype(&LoadLibraryExW);
+inline HostLoad originalHostLoad = nullptr;
+inline HMODULE WINAPI HostLoaded(LPCWSTR path, HANDLE file, DWORD flags) {
+  auto result = originalHostLoad(path, file, flags);
+  if (result && !stopping && discoveryState == 0 &&
+      !(flags & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE |
+                 LOAD_LIBRARY_AS_IMAGE_RESOURCE)) &&
+      result == GetModuleHandleW(L"ControlCenter.dll"))
+    HookControlCenter(result, true);
+  return result;
 }
 inline bool InitializeHost() {
-  stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  if (!stopEvent)
+  auto kernel = GetModuleHandleW(L"kernelbase.dll");
+  auto load =
+      kernel ? reinterpret_cast<HostLoad>(GetProcAddress(kernel, "LoadLibraryExW")) : nullptr;
+  if (!load || !WindhawkUtils::SetFunctionHook(load, HostLoaded, &originalHostLoad))
     return false;
-  auto kernel = GetModuleHandleW(L"kernelbase.dll"), user = GetModuleHandleW(L"user32.dll");
-  bool ok = true;
-  ok &= WindhawkUtils::SetFunctionHook(
-      reinterpret_cast<OpenKey>(GetProcAddress(kernel, "RegOpenKeyExW")), OpenKeyHook,
-      &originalOpenKey);
-  ok &= WindhawkUtils::SetFunctionHook(
-      reinterpret_cast<QueryValue>(GetProcAddress(kernel, "RegQueryValueExW")), QueryValueHook,
-      &originalQueryValue);
-  if (auto p = GetProcAddress(user, "CreateWindowInBand"))
-    ok &= WindhawkUtils::SetFunctionHook(reinterpret_cast<CreateBand>(p), Band, &originalBand);
-  if (auto p = GetProcAddress(user, "CreateWindowInBandEx"))
-    ok &=
-        WindhawkUtils::SetFunctionHook(reinterpret_cast<CreateBandEx>(p), BandEx, &originalBandEx);
-  return ok;
+  if (auto controlCenter = GetModuleHandleW(L"ControlCenter.dll"))
+    return HookControlCenter(controlCenter, false);
+  Wh_Log(L"Waiting for ControlCenter.dll to be loaded by the shell");
+  return true;
+}
+inline void AfterHostInit() {
+  // Close the race where the DLL loaded before the load hook was armed.
+  if (!stopping)
+    if (auto controlCenter = GetModuleHandleW(L"ControlCenter.dll"))
+      HookControlCenter(controlCenter, true);
+}
+inline void StopHost() {
+  {
+    std::lock_guard installLock(discoveryInstallMutex);
+    // Finish any symbol installation before the module can be unloaded.
+  }
+  {
+    std::lock_guard lock(discoveryMutex);
+    // stopping is already set by Wh_ModUninit; wait only for runtime creation.
+  }
+  StopBridge();
 }
 } // namespace native

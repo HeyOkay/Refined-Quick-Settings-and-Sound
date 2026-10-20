@@ -2,7 +2,7 @@
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
 // @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.148
+// @version 0.1.149
 // @author HeyOkay
 // @github https://github.com/HeyOkay
 // @include explorer.exe
@@ -62,11 +62,8 @@ customizations are restored when the mod is unloaded.
 - Added labels such as "Sound" and "Input device" are in English.
 - The first Sound opening in each ShellHost process starts with the mixer
   collapsed; subsequent openings remember its state.
-- **Incompatible with Windows 11 Notification Center Styler and UWPSpy** (and
-  other tools that attach to XAML Diagnostics in ShellHost). The mod finds the
-  Quick Settings and Sound pages through XAML Diagnostics, and Windows allows
-  only one diagnostics connection per process. The mod releases it once the
-  pages are found, but reconnects when the shell rebuilds the panel.
+
+Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll and the public XAML visual tree; it does not open a XAML Diagnostics connection. Compatibility with other mods that edit the same controls still requires live testing. If the panel was already open when enabling this candidate, close and reopen it; restart ShellHost if it is not picked up.
 
 ## Notes
 
@@ -76,9 +73,11 @@ Windhawk log.
 
 ## Credits and license
 
-GPL-3.0-only. The XAML Diagnostics connection approach follows
+GPL-3.0-only. The UI-thread dispatch technique follows
 [m417z's Notification Center Styler](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/windows-11-notification-center-styler.wh.cpp)
-(GPL-3.0). The hidden-applications parser is adapted from the local
+(GPL-3.0). ControlCenter.dll discovery uses the COM produce-interface pattern
+documented by [Per-monitor brightness](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/per-monitor-brightness.wh.cpp).
+The hidden-applications parser is adapted from the local
 Sound Output Direct and Taller mod (GPL-3.0-only).
 The sliders-horizontal and ethernet-port icons are from
 [Lucide](https://lucide.dev/) (ISC); the license notice is included below
@@ -124,14 +123,14 @@ void Wh_ModAfterInit() {
   if (native::explorer) {
     native::tray::AttachExisting();
   } else
-    native::StartBridge();
+    native::AfterHostInit();
 }
 void Wh_ModUninit() {
   native::stopping = true;
   if (native::explorer) {
     native::tray::Shutdown();
   } else
-    native::StopBridge();
+    native::StopHost();
 }
 BOOL Wh_ModSettingsChanged(BOOL *reload) {
   *reload = TRUE;

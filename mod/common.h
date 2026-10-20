@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <windhawk_utils.h>
-#include <xamlom.h>
 #include <ocidl.h>
 #include <mutex>
 #include <set>
