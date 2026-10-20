@@ -16,6 +16,8 @@
 /*
 # Refined Quick Settings and Sound
 
+![Quick Settings and Sound preview](https://raw.githubusercontent.com/HeyOkay/Refined-Quick-Settings-and-Sound/main/docs/assets/preview-lossless.webp)
+
 This "vanilla+" Windhawk mod reworks the Windows 11 "Quick Settings" and
 "Volume mixer" panels and makes them fit for daily use. It follows the
 Windows 11 design language, refining existing features and adding new ones:
