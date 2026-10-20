@@ -2,7 +2,7 @@
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
 // @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.140
+// @version 0.1.141
 // @author HeyOkay
 // @github https://github.com/HeyOkay
 // @include explorer.exe
@@ -61,6 +61,11 @@ customizations are restored when the mod is unloaded.
 - Added labels such as "Sound" and "Input device" are in English.
 - The first Sound opening in each ShellHost process starts with the mixer
   collapsed; subsequent openings remember its state.
+- **Incompatible with Windows 11 Notification Center Styler and UWPSpy** (and
+  other tools that attach to XAML Diagnostics in ShellHost). The mod finds the
+  Quick Settings and Sound pages through XAML Diagnostics, and Windows allows
+  only one diagnostics connection per process. The mod releases it once the
+  pages are found, but reconnects when the shell rebuilds the panel.
 
 ## Notes
 
@@ -91,9 +96,9 @@ in this source file.
 namespace native {
 inline bool explorer = false;
 inline void Settings() {
-  auto raw = Wh_GetStringSetting(L"hiddenApps");
-  hidden = sound::ParseHidden(raw ? raw : L"");
-  Wh_FreeStringSetting(raw);
+  auto setting = WindhawkUtils::StringSetting::make(L"hiddenApps");
+  auto text = setting.get();
+  hidden = sound::ParseHidden(text ? text : L"");
 }
 } // namespace native
 BOOL Wh_ModInit() {

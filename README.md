@@ -37,6 +37,8 @@ Windows 11, x86-64. Development testing was performed on build **26300**, primar
 
 The mixer starts collapsed on the first Sound opening in each ShellHost process; subsequent openings remember its state. Disable other mods or styling rules that modify the same Quick Settings, Sound or taskbar volume elements.
 
+**Incompatible with Windows 11 Notification Center Styler and UWPSpy** (and other tools that attach to XAML Diagnostics in ShellHost). The mod finds the Quick Settings and Sound pages through XAML Diagnostics, and Windows allows only one diagnostics connection per process: whichever tool connects first keeps it, and the other cannot attach. The mod releases the connection once the pages are found, but reconnects when the shell rebuilds the panel. Moving to ControlCenter.dll symbol hooks may come in a future update.
+
 ## Installation from source
 
 1. Install [Windhawk](https://windhawk.net/).

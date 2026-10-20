@@ -1,14 +1,13 @@
 #pragma once
 #include <windows.h>
 #include <mmdeviceapi.h>
-#include <audiopolicy.h>
+#include <mmreg.h> // WAVEFORMATEX for the endpoint policy interface
 #include <endpointvolume.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <propsys.h>
 #include <shlwapi.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
-#include <winrt/Windows.Media.Audio.h>
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -106,10 +105,6 @@ class Audio final {
                                                        PROPVARIANT *) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetDefaultEndpoint(LPCWSTR, ERole) = 0;
   };
-  struct Session {
-    winrt::com_ptr<ISimpleAudioVolume> volume;
-    std::wstring group;
-  };
   std::shared_ptr<Wake> wake_ = std::make_shared<Wake>();
   std::thread worker_;
   std::atomic<bool> stop_{false};
@@ -121,10 +116,6 @@ class Audio final {
   winrt::com_ptr<IAudioEndpointVolume> master_;
   std::shared_ptr<VolumeFeed> volumeFeed_ = std::make_shared<VolumeFeed>();
   winrt::com_ptr<VolumeNotify> volumeObserver_;
-  std::map<std::wstring, Session> sessions_;
-  std::map<std::wstring, App> metadata_;
-  // Restoration is per session-instance ID, never a display-name heuristic.
-  std::map<std::wstring, SavedVolume> saved_;
   std::map<std::wstring, SavedVolume> masters_;
   std::wstring masterId_, error_;
   unsigned long long revision_ = 0, applied_ = 0;
@@ -150,43 +141,6 @@ class Audio final {
       PropVariantClear(&value);
     }
     return name;
-  }
-  static std::wstring ImagePath(DWORD pid) {
-    HANDLE handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (!handle)
-      return {};
-    WCHAR buffer[32768];
-    DWORD size = 32768;
-    bool ok = QueryFullProcessImageNameW(handle, 0, buffer, &size);
-    CloseHandle(handle);
-    return ok ? std::wstring(buffer, size) : L"";
-  }
-  static std::wstring Description(std::wstring const &path) {
-    DWORD unused = 0, size = GetFileVersionInfoSizeW(path.c_str(), &unused);
-    if (!size)
-      return {};
-    std::vector<BYTE> bytes(size);
-    if (!GetFileVersionInfoW(path.c_str(), 0, size, bytes.data()))
-      return {};
-    struct Translation {
-      WORD language, page;
-    };
-    Translation *languages = nullptr;
-    UINT length = 0;
-    if (!VerQueryValueW(bytes.data(), L"\\VarFileInfo\\Translation",
-                        reinterpret_cast<void **>(&languages), &length))
-      return {};
-    for (UINT i = 0; i < length / sizeof(Translation); i++) {
-      WCHAR key[128];
-      swprintf_s(key, L"\\StringFileInfo\\%04x%04x\\FileDescription", languages[i].language,
-                 languages[i].page);
-      LPWSTR value = nullptr;
-      UINT chars = 0;
-      if (VerQueryValueW(bytes.data(), key, reinterpret_cast<void **>(&value), &chars) && value &&
-          *value)
-        return value;
-    }
-    return {};
   }
   std::vector<Device> Devices(EDataFlow flow, std::wstring &defaultId) {
     winrt::com_ptr<IMMDevice> current;
@@ -248,119 +202,6 @@ class Audio final {
       }
     }
   }
-  void ReadApps(Snapshot &state) {
-    std::map<std::wstring, App> groups;
-    std::map<std::wstring, Session> live;
-    for (auto const &output : state.output) {
-      winrt::com_ptr<IMMDevice> device;
-      winrt::com_ptr<IAudioSessionManager2> manager;
-      winrt::com_ptr<IAudioSessionEnumerator> entries;
-      if (FAILED(enumerator_->GetDevice(output.id.c_str(), device.put())) ||
-          FAILED(device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_INPROC_SERVER, nullptr,
-                                  manager.put_void())) ||
-          FAILED(manager->GetSessionEnumerator(entries.put())))
-        continue;
-      int count = 0;
-      entries->GetCount(&count);
-      for (int i = 0; i < count; i++) {
-        winrt::com_ptr<IAudioSessionControl> control;
-        if (FAILED(entries->GetSession(i, control.put())))
-          continue;
-        AudioSessionState status{};
-        if (FAILED(control->GetState(&status)) || status == AudioSessionStateExpired)
-          continue;
-        auto details = control.try_as<IAudioSessionControl2>();
-        auto volume = control.try_as<ISimpleAudioVolume>();
-        if (!details || !volume)
-          continue;
-        LPWSTR raw = nullptr;
-        if (FAILED(details->GetSessionInstanceIdentifier(&raw)))
-          continue;
-        std::wstring sessionId = output.id + L"|" + raw;
-        CoTaskMemFree(raw);
-        DWORD pid = 0;
-        details->GetProcessId(&pid);
-        bool system = details->IsSystemSoundsSession() == S_OK;
-        auto path = system ? L"" : ImagePath(pid);
-        auto group = system          ? L"system"
-                     : !path.empty() ? Lower(path)
-                                     : L"pid:" + std::to_wstring(pid);
-        auto &app = groups[group];
-        bool first = app.id.empty();
-        if (first) {
-          if (auto cached = metadata_.find(group); cached != metadata_.end()) {
-            app = cached->second;
-            app.volume = 0;
-            app.muted = true;
-          } else {
-            app.id = group;
-            app.path = path;
-            app.name = system ? L"System sounds" : Description(path);
-            if (app.name.empty() && SUCCEEDED(control->GetDisplayName(&raw))) {
-              app.name = raw;
-              CoTaskMemFree(raw);
-              if (!app.name.empty() && app.name[0] == L'@') {
-                WCHAR resolved[1024]{};
-                if (SUCCEEDED(SHLoadIndirectString(app.name.c_str(), resolved, 1024, nullptr)))
-                  app.name = resolved;
-              }
-            }
-            if (app.name.empty())
-              app.name = path.empty() ? L"Application " + std::to_wstring(pid)
-                                      : PathFindFileNameW(path.c_str());
-            if (SUCCEEDED(control->GetIconPath(&raw))) {
-              app.icon = raw;
-              CoTaskMemFree(raw);
-            }
-            app.muted = true;
-            metadata_[group] = app;
-          }
-        }
-        float value = 0;
-        BOOL mute = FALSE;
-        if (FAILED(volume->GetMasterVolume(&value)) || FAILED(volume->GetMute(&mute)))
-          continue;
-        saved_[sessionId].Observe(value, mute);
-        app.volume = std::max(app.volume, mute ? 0.f : value);
-        app.muted = app.muted && (mute || value <= 0);
-        live.emplace(sessionId, Session{std::move(volume), group});
-      }
-    }
-    sessions_ = std::move(live);
-    std::erase_if(saved_, [&](auto const &pair) { return !sessions_.contains(pair.first); });
-    for (auto &[id, app] : groups)
-      state.apps.push_back(std::move(app));
-  }
-  void ReadSpatial(Snapshot &state) {
-    using namespace winrt::Windows::Media::Audio;
-    constexpr PCWSTR off = L"{00000000-0000-0000-0000-000000000000}";
-    state.spatial.push_back({off, L"Off", true});
-    if (state.outputId.empty())
-      return;
-    try {
-      auto config = SpatialAudioDeviceConfiguration::GetForDeviceId(SpatialId(state.outputId));
-      state.spatialAvailable = config.IsSpatialAudioSupported();
-      auto current = config.DefaultSpatialAudioFormat();
-      state.spatial[0].current = current.empty() || Lower(std::wstring(current)) == off;
-      auto add = [&](auto const &id, PCWSTR label) {
-        if (config.IsSpatialAudioFormatSupported(id))
-          state.spatial.push_back({std::wstring(id), label, current == id});
-      };
-      add(SpatialAudioFormatSubtype::WindowsSonic(), L"Windows Sonic for Headphones");
-      add(SpatialAudioFormatSubtype::DolbyAtmosForHeadphones(), L"Dolby Atmos for Headphones");
-      add(SpatialAudioFormatSubtype::DolbyAtmosForHomeTheater(), L"Dolby Atmos for home theater");
-      add(SpatialAudioFormatSubtype::DTSHeadphoneX(), L"DTS Headphone:X");
-      add(SpatialAudioFormatSubtype::DTSXForHomeTheater(), L"DTS:X for home theater");
-      if (!current.empty() && std::none_of(state.spatial.begin(), state.spatial.end(),
-                                           [](auto const &f) { return f.current; }))
-        state.spatial.push_back({std::wstring(current), L"Current spatial format", true});
-    } catch (winrt::hresult_error const &ex) {
-      state.spatialAvailable = false;
-    }
-  }
-  static std::wstring SpatialId(std::wstring const &endpoint) {
-    return L"\\\\?\\SWD#MMDEVAPI#" + endpoint + L"#{e6327cad-dcec-4949-ae8a-991e976a79d2}";
-  }
   void SetDefault(std::wstring const &id) {
     const CLSID clsid = {
         0x870af99c, 0x171d, 0x4f9e, {0xaf, 0x0d, 0xe6, 0x3d, 0xf4, 0x0c, 0x2b, 0xc9}};
@@ -406,32 +247,7 @@ class Audio final {
         value = saved.Toggle(before, muted);
       winrt::check_hresult(master_->SetMasterVolumeLevelScalar(value, nullptr));
       winrt::check_hresult(master_->SetMute(value <= 0, nullptr));
-    } else if (cmd.action == Action::AppVolume || cmd.action == Action::AppMute) {
-      bool any = false, restore = true;
-      for (auto const &[id, session] : sessions_)
-        if (session.group == cmd.id) {
-          float before = 0;
-          BOOL mute = FALSE;
-          session.volume->GetMasterVolume(&before);
-          session.volume->GetMute(&mute);
-          if (before > 0 && !mute)
-            restore = false;
-          any = true;
-        }
-      if (!any)
-        throw winrt::hresult_error(E_NOTFOUND, L"Audio session ended");
-      for (auto const &[id, session] : sessions_)
-        if (session.group == cmd.id) {
-          float before = 0;
-          BOOL mute = FALSE;
-          winrt::check_hresult(session.volume->GetMasterVolume(&before));
-          winrt::check_hresult(session.volume->GetMute(&mute));
-          saved_[id].Observe(before, mute);
-          float next = cmd.action == Action::AppMute ? (restore ? saved_[id].last : 0) : value;
-          winrt::check_hresult(session.volume->SetMasterVolume(next, nullptr));
-          winrt::check_hresult(session.volume->SetMute(next <= 0, nullptr));
-        }
-    } else if (cmd.action == Action::Output || cmd.action == Action::Input) {
+    } else if (cmd.action == Action::Input) {
       winrt::com_ptr<IMMDevice> target;
       winrt::check_hresult(enumerator_->GetDevice(cmd.id.c_str(), target.put()));
       DWORD status = 0;
@@ -441,18 +257,9 @@ class Audio final {
       auto endpoint = target.as<IMMEndpoint>();
       EDataFlow flow;
       winrt::check_hresult(endpoint->GetDataFlow(&flow));
-      if (flow != (cmd.action == Action::Output ? eRender : eCapture))
+      if (flow != eCapture)
         throw winrt::hresult_error(E_INVALIDARG);
       SetDefault(cmd.id);
-      if (cmd.action == Action::Output)
-        BindMaster(cmd.id);
-    } else if (cmd.action == Action::Spatial) {
-      using namespace winrt::Windows::Media::Audio;
-      auto config = SpatialAudioDeviceConfiguration::GetForDeviceId(SpatialId(masterId_));
-      auto operation = config.SetDefaultSpatialAudioFormatAsync(cmd.id);
-      auto result = operation.get();
-      if (result.Status() != SetDefaultSpatialAudioFormatStatus::Succeeded)
-        throw winrt::hresult_error(E_ACCESSDENIED, L"Windows rejected the spatial format change");
     }
   }
   void Read() {
@@ -470,8 +277,9 @@ class Audio final {
       state.muted = mute;
       masters_[masterId_].Observe(state.master, state.muted);
     }
-    // The existing shell lists own application sessions and spatial sound.
-    // This worker serves only the added input selector, master and tray.
+    // The shell's own lists serve output devices, application sessions and
+    // spatial sound; this worker serves the added input selector, the master
+    // volume and the tray.
     {
       std::lock_guard lock(mutex_);
       snapshot_ = std::move(state);
@@ -518,8 +326,9 @@ class Audio final {
             publish_();
         }
         std::unique_lock lock(wake_->mutex);
-        wake_->cv.wait_for(lock, std::chrono::milliseconds(300),
-                           [&] { return stop_ || wake_->changed; });
+        // No polling: endpoint, default-device and master volume changes all
+        // arrive as notifications (Notify, VolumeNotify), commands through Send.
+        wake_->cv.wait(lock, [&] { return stop_ || wake_->changed; });
         wake_->changed = false;
       }
       enumerator_->UnregisterEndpointNotificationCallback(observer.get());
@@ -539,7 +348,6 @@ class Audio final {
       if (publish_)
         publish_();
     }
-    sessions_.clear();
     if (master_ && volumeObserver_)
       master_->UnregisterControlChangeNotify(volumeObserver_.get());
     volumeObserver_ = nullptr;
@@ -570,7 +378,12 @@ public:
       volumeFeed_->active = false;
       volumeFeed_->publish = {};
     }
-    stop_ = true;
+    {
+      // Under the wake mutex, so the worker cannot miss it between its check
+      // and its wait.
+      std::lock_guard lock(wake_->mutex);
+      stop_ = true;
+    }
     wake_->cv.notify_one();
     if (worker_.joinable())
       worker_.join();

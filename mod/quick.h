@@ -562,8 +562,8 @@ class QuickPage {
     brightIdle_.Stop();
     brightIdle_.Start();
   }
-  // Night light on/off: the native tile when it is realized, otherwise the
-  // shell's CloudStore state (byte 18: 0x15 on, 0x13 off).
+  // Night light status, read (never written) from the shell's CloudStore state
+  // (byte 18: 0x15 on, 0x13 off).
   static int RegistryNight() {
     constexpr auto key =
         L"Software\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\DefaultAccount\\Current"
@@ -633,8 +633,8 @@ class QuickPage {
         return p;
     return nullptr;
   }
-  // Night light toggle: the native tile through UI Automation when realized,
-  // otherwise the shell's CloudStore state, which Windows applies at once.
+  // Night light toggle: the native tile through UI Automation when it is
+  // realized, otherwise the Night light page of Settings.
   void ToggleNight() {
     try {
       if (auto tile = NightTileNow())
@@ -658,56 +658,7 @@ class QuickPage {
     } catch (...) {
       Wh_Log(L"QuickNightToggleError %08X", winrt::to_hresult());
     }
-    if (WriteNight(!NightOn())) {
-      nightRegistry_ = NightOn() ? 0 : 1;
-      NightState();
-      return;
-    }
     ShellExecuteW(nullptr, L"open", L"ms-settings:nightlight", nullptr, nullptr, SW_SHOWNORMAL);
-  }
-  // State blob: byte 18 0x15 on / 0x13 off; "On" also carries the two bytes
-  // 10 00 at offset 23. Bytes 10-14 are a varint timestamp that has to grow for
-  // Windows to apply the change.
-  static bool WriteNight(bool on) {
-    constexpr auto key =
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\DefaultAccount\\Current"
-        L"\\default$windows.data.bluelightreduction.bluelightreductionstate\\windows.data."
-        L"bluelightreduction.bluelightreductionstate";
-    BYTE raw[256];
-    DWORD size = sizeof(raw);
-    if (RegGetValueW(HKEY_CURRENT_USER, key, L"Data", RRF_RT_REG_BINARY, nullptr, raw, &size) !=
-            ERROR_SUCCESS ||
-        size < 26)
-      return false;
-    std::vector<BYTE> data(raw, raw + size);
-    if (data[18] != 0x15 && data[18] != 0x13)
-      return false;
-    bool now = data[18] == 0x15;
-    if (now == on)
-      return true;
-    if (on) {
-      data[18] = 0x15;
-      if (!(data[23] == 0x10 && data[24] == 0x00))
-        data.insert(data.begin() + 23, {0x10, 0x00});
-    } else {
-      data[18] = 0x13;
-      if (data[23] == 0x10 && data[24] == 0x00)
-        data.erase(data.begin() + 23, data.begin() + 25);
-    }
-    for (int i = 10; i < 15; i++) {
-      int low = data[i] & 0x7f;
-      if (low < 0x7f) {
-        data[i] = BYTE((data[i] & 0x80) | (low + 1));
-        break;
-      }
-      data[i] = BYTE(data[i] & 0x80);
-    }
-    HKEY h = nullptr;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, key, 0, KEY_SET_VALUE, &h) != ERROR_SUCCESS)
-      return false;
-    auto result = RegSetValueExW(h, L"Data", 0, REG_BINARY, data.data(), DWORD(data.size()));
-    RegCloseKey(h);
-    return result == ERROR_SUCCESS;
   }
   bool NativeBrightness() {
     auto group = Named(view_, L"SlidersGroup");

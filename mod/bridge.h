@@ -32,7 +32,7 @@ struct Job {
   std::function<void()> action;
 };
 inline std::mutex jobsMutex;
-inline std::map<UINT_PTR, Job *> jobs;
+[[clang::no_destroy]] inline std::map<UINT_PTR, Job *> jobs;
 inline std::atomic<UINT_PTR> nextJob = 0;
 inline LRESULT CALLBACK DispatchHook(int code, WPARAM w, LPARAM l) {
   if (code >= 0) {
@@ -81,13 +81,39 @@ inline bool Dispatch(HWND window, std::function<void()> action) {
   return true;
 }
 struct Runtime;
+inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND window, LONG object, LONG, DWORD,
+                                DWORD);
 inline bool BeginRelease();
 inline bool FinishRelease();
 inline bool Reconnect();
 inline std::mutex runtimesMutex;
-inline std::map<DWORD, Runtime *> runtimes;
+[[clang::no_destroy]] inline std::map<DWORD, Runtime *> runtimes;
 struct Runtime {
   HWND window = nullptr;
+  // The UI thread's queue: the unload path reaches the thread through it when
+  // the window handle is gone or stale.
+  winrt::Windows::System::DispatcherQueue queue{nullptr};
+  // While the panel is hidden the maintenance timer stops; showing or
+  // uncloaking the panel window starts it again (WinEvent hooks, UI thread).
+  HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr;
+  bool Hidden() const {
+    if (!window || !IsWindowVisible(window))
+      return true;
+    using Dwm = HRESULT(WINAPI *)(HWND, DWORD, void *, DWORD);
+    static auto get = [] {
+      auto dll = LoadLibraryExW(L"dwmapi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+      return dll ? reinterpret_cast<Dwm>(GetProcAddress(dll, "DwmGetWindowAttribute")) : nullptr;
+    }();
+    DWORD cloaked = 0;
+    return get && SUCCEEDED(get(window, 14 /*DWMWA_CLOAKED*/, &cloaked, sizeof(cloaked))) &&
+           cloaked;
+  }
+  void Wake() {
+    if (timer && !stopping) {
+      timer.Interval(std::chrono::milliseconds(200));
+      timer.Start();
+    }
+  }
   X::DispatcherTimer timer{nullptr};
   winrt::event_token tick{};
   winrt::com_ptr<TestHooks> release;
@@ -224,13 +250,20 @@ struct Runtime {
                                                                 reinterpret_cast<DWORD_PTR>(this));
   }
   Runtime(winrt::com_ptr<TestHooks> hooks, winrt::com_ptr<IXamlDiagnostics> inspect)
-      : window(ThreadWindow(GetCurrentThreadId())), release(std::move(hooks)),
+      : window(ThreadWindow(GetCurrentThreadId())),
+        queue(winrt::Windows::System::DispatcherQueue::GetForCurrentThread()),
+        release(std::move(hooks)),
         diagnostics(std::move(inspect)), properties(diagnostics.as<IVisualTreeService3>()) {
     EnsureVolumePulse();
     timer = X::DispatcherTimer();
     timer.Interval(std::chrono::milliseconds(200));
     tick = timer.Tick([this](auto &&, auto &&) { Refresh(); });
     timer.Start();
+    DWORD process = GetCurrentProcessId();
+    showHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, nullptr, PanelShown, process,
+                               GetCurrentThreadId(), WINEVENT_OUTOFCONTEXT);
+    uncloakHook = SetWinEventHook(0x8018 /*EVENT_OBJECT_UNCLOAKED*/, 0x8018, nullptr, PanelShown,
+                                  process, GetCurrentThreadId(), WINEVENT_OUTOFCONTEXT);
     std::lock_guard lock(runtimesMutex);
     runtimes[GetCurrentThreadId()] = this;
   }
@@ -503,9 +536,16 @@ struct Runtime {
       Wh_Log(L"Native layout: %08X", winrt::to_hresult());
     }
     if (timer) {
-      auto interval = std::chrono::milliseconds(pages.empty() ? 1000 : 200);
-      if (timer.Interval() != winrt::Windows::Foundation::TimeSpan(interval))
-        timer.Interval(interval);
+      // Hidden panel: no periodic work once XAML Diagnostics is released and
+      // both show hooks are in place (otherwise a slow 2 s tick remains).
+      bool idle = Hidden();
+      if (idle && !observing && !releasing && showHook && uncloakHook)
+        timer.Stop();
+      else {
+        auto interval = std::chrono::milliseconds(idle ? 2000 : pages.empty() ? 1000 : 200);
+        if (timer.Interval() != winrt::Windows::Foundation::TimeSpan(interval))
+          timer.Interval(interval);
+      }
     }
     auto handles = std::move(pending);
     pending.clear();
@@ -539,6 +579,16 @@ struct Runtime {
       WindhawkUtils::RemoveWindowSubclassFromAnyThread(window, VolumeProc);
       pulseHooked = false;
     }
+    {
+      std::lock_guard lock(runtimesMutex);
+      if (auto it = runtimes.find(GetCurrentThreadId()); it != runtimes.end() && it->second == this)
+        runtimes.erase(it);
+    }
+    if (showHook)
+      UnhookWinEvent(showHook);
+    if (uncloakHook)
+      UnhookWinEvent(uncloakHook);
+    showHook = uncloakHook = nullptr;
     timer.Stop();
     timer.Tick(tick);
     for (auto &page : pages)
@@ -555,7 +605,13 @@ struct Runtime {
     release = nullptr;
   }
 };
-inline thread_local std::unique_ptr<Runtime> runtime;
+// Stopped and reset by StopBridge; never destroyed at thread or process exit.
+[[clang::no_destroy]] inline thread_local std::unique_ptr<Runtime> runtime;
+inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND window, LONG object, LONG, DWORD,
+                                DWORD) {
+  if (object == OBJID_WINDOW && runtime && window == runtime->window)
+    runtime->Wake();
+}
 inline thread_local bool compositionDisabled = false;
 class Watcher : public winrt::implements<Watcher, IVisualTreeServiceCallback2, winrt::non_agile> {
   winrt::com_ptr<IXamlDiagnostics> diagnostics_;
@@ -667,7 +723,7 @@ public:
   }
 };
 inline std::mutex watcherMutex;
-inline winrt::com_ptr<Watcher> watcher, retiredWatcher;
+[[clang::no_destroy]] inline winrt::com_ptr<Watcher> watcher, retiredWatcher;
 // Release in two steps: reports off on the watcher's own thread (never inside a
 // report), then FinishRelease in a later Refresh drops the watcher's references.
 inline bool BeginRelease() {
@@ -692,15 +748,26 @@ inline bool FinishRelease() {
 struct Tap : winrt::implements<Tap, IObjectWithSite, winrt::non_agile> {
   HRESULT STDMETHODCALLTYPE SetSite(IUnknown *value) noexcept override {
     try {
-      std::lock_guard lock(watcherMutex);
-      if (watcher) {
-        watcher->Stop();
-        watcher = nullptr;
-      }
-      if (value && !stopping) {
+      // InitializeXamlDiagnosticsEx loaded this module once more for the tap:
+      // that reference is dropped for every site, also while stopping, or the
+      // module could not unload.
+      if (value)
         FreeLibrary(module);
-        watcher = winrt::make_self<Watcher>(value);
-        watcher->Advise();
+      // The old watcher is stopped outside the lock: stopping waits for its
+      // worker, which may need the UI thread, and Refresh on the UI thread
+      // takes the same lock.
+      winrt::com_ptr<Watcher> old;
+      {
+        std::lock_guard lock(watcherMutex);
+        old = std::move(watcher);
+      }
+      if (old)
+        old->Stop();
+      if (value && !stopping) {
+        auto fresh = winrt::make_self<Watcher>(value);
+        fresh->Advise();
+        std::lock_guard lock(watcherMutex);
+        watcher = std::move(fresh);
       }
       return S_OK;
     } catch (...) {
@@ -795,31 +862,50 @@ inline void StopBridge() {
     CloseHandle(connectionWorker);
     connectionWorker = nullptr;
   }
+  // Watchers are taken out under the lock and stopped outside it: Stop waits
+  // for a worker that may need the UI thread, whose Refresh takes this lock.
+  winrt::com_ptr<Watcher> current, retired;
   {
     std::lock_guard lock(watcherMutex);
-    if (watcher) {
-      watcher->Stop();
-      watcher = nullptr;
-    }
-    if (retiredWatcher) {
-      retiredWatcher->Stop();
-      retiredWatcher = nullptr;
-    }
+    current = std::move(watcher);
+    retired = std::move(retiredWatcher);
   }
+  if (current)
+    current->Stop();
+  if (retired)
+    retired->Stop();
   std::vector<std::pair<DWORD, Runtime *>> copy;
   {
     std::lock_guard lock(runtimesMutex);
     for (auto pair : runtimes)
       copy.push_back(pair);
   }
-  for (auto [thread, state] : copy)
-    if (auto window = state->window ? state->window : ThreadWindow(thread))
-      Dispatch(window, [] {
-        if (runtime) {
-          runtime->Stop();
-          runtime.reset();
-        }
-      });
+  auto stop = [] {
+    if (runtime) {
+      runtime->Stop();
+      runtime.reset();
+    }
+  };
+  for (auto [thread, state] : copy) {
+    HWND window = state->window && IsWindow(state->window) ? state->window : ThreadWindow(thread);
+    if (window && GetWindowThreadProcessId(window, nullptr) == thread && Dispatch(window, stop))
+      continue;
+    // No usable window: queue the stop on the thread's DispatcherQueue and
+    // wait for it, so no Runtime (timer, handlers) outlives the module.
+    bool stopped = false;
+    if (auto queue = state->queue)
+      if (auto done = CreateEventW(nullptr, TRUE, FALSE, nullptr)) {
+        if (queue.TryEnqueue([stop, done] {
+              stop();
+              SetEvent(done);
+            }))
+          stopped = WaitForSingleObject(done, 10000) == WAIT_OBJECT_0;
+        if (stopped)
+          CloseHandle(done);
+      }
+    if (!stopped)
+      Wh_Log(L"Runtime on thread %u could not be stopped before unload", thread);
+  }
   {
     std::lock_guard lock(runtimesMutex);
     runtimes.clear();

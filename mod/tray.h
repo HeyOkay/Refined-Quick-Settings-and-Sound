@@ -6,13 +6,16 @@
 namespace native::tray {
 inline std::atomic<bool> stopping{false}, moduleHooked{false};
 
-inline sound::Audio audio;
+// Globals that own threads, COM objects or XAML references are never destroyed
+// by the C++ runtime: Shutdown releases them explicitly, and destructors run at
+// process exit after other modules are gone.
+[[clang::no_destroy]] inline sound::Audio audio;
 inline HINSTANCE moduleInstance = nullptr;
 struct Job {
   std::function<void()> call;
 };
 inline std::mutex jobsMutex, recordsMutex;
-inline std::map<UINT_PTR, std::shared_ptr<Job>> jobs;
+[[clang::no_destroy]] inline std::map<UINT_PTR, std::shared_ptr<Job>> jobs;
 inline std::atomic<UINT_PTR> nextJob{0};
 inline UINT dispatchMessage = RegisterWindowMessageW(L"Windhawk.SoundPanel.ThreadDispatch.1");
 inline LRESULT CALLBACK DispatchHook(int code, WPARAM w, LPARAM l) {
@@ -155,7 +158,7 @@ struct Record {
   int kind = 0, netState = 0;
   bool networkSeen = false; // kind: 1 volume, 2 wired network
 };
-inline std::vector<std::shared_ptr<Record>> records;
+[[clang::no_destroy]] inline std::vector<std::shared_ptr<Record>> records;
 inline bool VolumeLeaf(X::DependencyObject const &node) {
   winrt::hstring value;
   if (auto text = node.try_as<C::TextBlock>())
@@ -475,8 +478,12 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
     record->kind = kind;
     if (kind == 2)
       record->networkSeen = true;
+    // Attached: volume changes arrive as pulses (VolumeChanged) and the glyph
+    // callbacks keep the native leaves hidden, so the timer is only a slow
+    // safety net; the network glyph follows the shell's own glyph changes,
+    // which have no event here.
     if (record->timer)
-      record->timer.Interval(std::chrono::milliseconds(300));
+      record->timer.Interval(kind == 2 ? std::chrono::seconds(1) : std::chrono::seconds(2));
   }
   if (record->kind == 2) {
     RefreshNetwork(record, icon);
@@ -571,7 +578,7 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
   }
 }
 inline std::mutex pulsesMutex;
-inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
+[[clang::no_destroy]] inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
 inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l, DWORD_PTR) {
   if (message == volumePulseMessage) {
     {
@@ -745,10 +752,15 @@ inline void OpenNativeSound() {
   auto sent = SendInput(count, input, sizeof(INPUT));
   Wh_Log(L"Native Sound shortcut: %u/%u events", sent, count);
 }
-using NativeTapped = void(WINAPI *)(void *, IInspectable const &, X::Input::TappedRoutedEventArgs);
+// The native handler takes TappedRoutedEventArgs by value. In the MSVC ABI the
+// caller passes the address of a temporary and the callee destroys it; the
+// mod's compiler would treat a by-value parameter differently, so the hook takes
+// that address and the native handler (or this hook, when it handles the tap)
+// releases the object.
+using NativeTapped = void(WINAPI *)(void *, IInspectable const &, void *);
 inline NativeTapped originalTapped = nullptr;
-inline void WINAPI Tapped(void *self, IInspectable const &sender,
-                          X::Input::TappedRoutedEventArgs args) {
+inline void WINAPI Tapped(void *self, IInspectable const &sender, void *argsSlot) {
+  auto &args = *static_cast<X::Input::TappedRoutedEventArgs *>(argsSlot);
   if (!stopping)
     try {
       // Intercept the shell's own handler, before it activates Quick Settings.
@@ -772,13 +784,14 @@ inline void WINAPI Tapped(void *self, IInspectable const &sender,
           } catch (...) {
             Wh_Log(L"Lazy volume icon styling failed; click was still handled");
           }
+          args = nullptr; // the callee's share of the by-value argument
           return;
         }
       }
     } catch (winrt::hresult_error const &error) {
       Wh_Log(L"Native volume handler: 0x%08X", error.code().value);
     }
-  originalTapped(self, sender, std::move(args));
+  originalTapped(self, sender, argsSlot);
 }
 inline bool HookTray(HMODULE module) {
   // Undecorated names verified against the same RVAs in both cached SystemTray PDBs.

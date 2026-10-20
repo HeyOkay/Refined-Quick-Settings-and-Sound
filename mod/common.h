@@ -173,7 +173,7 @@ inline C::Button Button(X::FrameworkElement const &owner, PCWSTR name, PCWSTR gl
 // Block divider colour: the Quick Settings tiles Border, whose bottom edge
 // divides the tiles from the All settings block. Set by QuickPage, read by the
 // Sound page; a binding follows theme changes.
-inline winrt::weak_ref<C::Border> quickDivider;
+[[clang::no_destroy]] inline winrt::weak_ref<C::Border> quickDivider;
 inline C::Border QuickDivider() {
   auto b = quickDivider.get();
   if (!b)
@@ -279,7 +279,7 @@ struct Journal {
 };
 // Members are looked up once per (type, name): the shell's metadata provider was
 // asked for the type and member on every read, hundreds of times per opening.
-inline std::map<std::wstring, X::Markup::IXamlMember> modelMembers;
+[[clang::no_destroy]] inline std::map<std::wstring, X::Markup::IXamlMember> modelMembers;
 inline X::Markup::IXamlMember ModelMember(IInspectable const &model, PCWSTR name) {
   try {
     if (!model)

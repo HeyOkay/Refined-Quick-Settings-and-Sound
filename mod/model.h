@@ -55,27 +55,16 @@ struct Device {
   std::wstring id, name;
   bool current = false;
 };
-struct App {
-  std::wstring id, name, path, icon;
-  float volume = 0;
-  bool muted = false;
-};
-struct Spatial {
-  std::wstring id, name;
-  bool current = false;
-};
 struct Snapshot {
   uint64_t masterNoticeAt = 0, masterRevision = 0;
   std::vector<Device> output, input;
-  std::vector<App> apps;
-  std::vector<Spatial> spatial;
   std::wstring outputId, inputId, error;
   float master = 0;
-  bool muted = false, masterAvailable = false, spatialAvailable = false;
+  bool muted = false, masterAvailable = false;
   unsigned long long revision = 0;
   unsigned long long applied = 0;
 };
-enum class Action { MasterVolume, MasterMute, AppVolume, AppMute, Output, Input, Spatial, Refresh };
+enum class Action { MasterVolume, MasterMute, Input, Refresh };
 struct Command {
   Action action = Action::Refresh;
   std::wstring id;
