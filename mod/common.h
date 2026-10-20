@@ -173,7 +173,7 @@ inline C::Button Button(X::FrameworkElement const &owner, PCWSTR name, PCWSTR gl
 // Block divider colour: the Quick Settings tiles Border, whose bottom edge
 // divides the tiles from the All settings block. Set by QuickPage, read by the
 // Sound page; a binding follows theme changes.
-[[clang::no_destroy]] inline winrt::weak_ref<C::Border> quickDivider;
+inline winrt::weak_ref<C::Border> quickDivider;
 inline C::Border QuickDivider() {
   auto b = quickDivider.get();
   if (!b)
@@ -190,6 +190,19 @@ inline D::Binding DividerBinding(C::Border const &source) {
 }
 // Dark theme: every divider and slider rail looks like the line above All
 // settings. An opaque grey would look wrong over a tinted wallpaper.
+// Shown and not cloaked by DWM (the shell hides its panel windows by cloaking).
+inline bool WindowShown(HWND window) {
+  if (!window || !IsWindowVisible(window))
+    return false;
+  using Dwm = HRESULT(WINAPI *)(HWND, DWORD, void *, DWORD);
+  static auto get = [] {
+    auto dll = LoadLibraryExW(L"dwmapi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    return dll ? reinterpret_cast<Dwm>(GetProcAddress(dll, "DwmGetWindowAttribute")) : nullptr;
+  }();
+  DWORD cloaked = 0;
+  return !(get && SUCCEEDED(get(window, 14 /*DWMWA_CLOAKED*/, &cloaked, sizeof(cloaked))) &&
+           cloaked);
+}
 inline bool DarkTheme(X::FrameworkElement const &e) {
   return e && e.ActualTheme() == X::ElementTheme::Dark;
 }

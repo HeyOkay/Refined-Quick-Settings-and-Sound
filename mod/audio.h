@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <mmreg.h> // WAVEFORMATEX for the endpoint policy interface
+#include <powrprof.h>
+#include <powersetting.h>
 #include <endpointvolume.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <propsys.h>
@@ -16,6 +18,55 @@
 #include <thread>
 #include "model.h"
 namespace sound {
+// Display-on and resume-from-sleep notifications (power callbacks on a system
+// thread). DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS and DEVICE_NOTIFY_CALLBACK (2) are
+// declared here: the mod's MinGW headers lack them.
+class PowerWake {
+  struct Subscribe {
+    ULONG(CALLBACK *Callback)(PVOID, ULONG, PVOID);
+    PVOID Context;
+  };
+  static constexpr DWORD notifyCallback = 2;
+  static constexpr GUID displayState = {
+      0x6fe69556, 0x704a, 0x47a0, {0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47}};
+  std::function<void()> on_;
+  Subscribe params_{};
+  HPOWERNOTIFY display_ = nullptr, resume_ = nullptr;
+  static ULONG CALLBACK Changed(PVOID context, ULONG type, PVOID setting) {
+    bool wake = type == PBT_APMRESUMEAUTOMATIC;
+    if (type == PBT_POWERSETTINGCHANGE && setting) {
+      auto s = static_cast<POWERBROADCAST_SETTING *>(setting);
+      wake = IsEqualGUID(s->PowerSetting, displayState) && s->DataLength >= sizeof(DWORD) &&
+             *reinterpret_cast<DWORD const *>(s->Data) == 1;
+    }
+    if (wake && context)
+      try {
+        static_cast<PowerWake *>(context)->on_();
+      } catch (...) {
+      }
+    return 0;
+  }
+
+public:
+  explicit PowerWake(std::function<void()> on) : on_(std::move(on)) {
+    params_.Callback = Changed;
+    params_.Context = this;
+    if (PowerSettingRegisterNotification(&displayState, notifyCallback, &params_, &display_) !=
+        ERROR_SUCCESS)
+      display_ = nullptr;
+    if (PowerRegisterSuspendResumeNotification(notifyCallback, &params_, &resume_) !=
+        ERROR_SUCCESS)
+      resume_ = nullptr;
+  }
+  PowerWake(PowerWake const &) = delete;
+  PowerWake &operator=(PowerWake const &) = delete;
+  ~PowerWake() {
+    if (display_)
+      PowerSettingUnregisterNotification(display_);
+    if (resume_)
+      PowerUnregisterSuspendResumeNotification(resume_);
+  }
+};
 // All COM audio objects belong to one MTA thread. The UI exchanges plain data.
 class Audio final {
   struct VolumeFeed {
@@ -276,6 +327,14 @@ class Audio final {
                               SUCCEEDED(master_->GetMute(&mute));
       state.muted = mute;
       masters_[masterId_].Observe(state.master, state.muted);
+      // An invalidated endpoint keeps failing: it is opened again on the next
+      // read (the next notification).
+      if (!state.masterAvailable) {
+        if (volumeObserver_)
+          master_->UnregisterControlChangeNotify(volumeObserver_.get());
+        volumeObserver_ = nullptr;
+        master_ = nullptr;
+      }
     }
     // The shell's own lists serve output devices, application sessions and
     // spatial sound; this worker serves the added input selector, the master
@@ -326,8 +385,8 @@ class Audio final {
             publish_();
         }
         std::unique_lock lock(wake_->mutex);
-        // No polling: endpoint, default-device and master volume changes all
-        // arrive as notifications (Notify, VolumeNotify), commands through Send.
+        // No polling: endpoint, default-device and master volume changes arrive
+        // as notifications (Notify, VolumeNotify), commands through Send.
         wake_->cv.wait(lock, [&] { return stop_ || wake_->changed; });
         wake_->changed = false;
       }

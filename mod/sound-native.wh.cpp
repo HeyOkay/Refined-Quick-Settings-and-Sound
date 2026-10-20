@@ -2,14 +2,13 @@
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
 // @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.141
+// @version 0.1.148
 // @author HeyOkay
 // @github https://github.com/HeyOkay
 // @include explorer.exe
 // @include ShellHost.exe
-// @include ShellExperienceHost.exe
 // @architecture x86-64
-// @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lversion -luuid
+// @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lpowrprof -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
 // ==WindhawkModReadme==
@@ -54,7 +53,9 @@ customizations are restored when the mod is unloaded.
 
 ## Compatibility
 
-- Windows 11, x86-64. Development testing: build 26300, primarily at 125% scale.
+- Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64
+  (ARM64 is untested).
+  Development testing: build 26300, primarily at 125% scale.
 - Other Windows builds and display scales need validation. The mod depends on
   internal shell XAML elements and symbols which can change with Windows updates.
 - DDC/CI brightness requires a compatible monitor with DDC/CI enabled.
@@ -97,8 +98,7 @@ namespace native {
 inline bool explorer = false;
 inline void Settings() {
   auto setting = WindhawkUtils::StringSetting::make(L"hiddenApps");
-  auto text = setting.get();
-  hidden = sound::ParseHidden(text ? text : L"");
+  hidden = sound::ParseHidden(setting.get());
 }
 } // namespace native
 BOOL Wh_ModInit() {

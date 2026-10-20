@@ -187,7 +187,7 @@ public:
     saved_[id_].Observe(value, muted);
     return true;
   }
-  // As SV (audio.h Execute): level from the slider, muted exactly at 0. The
+  // As SV (sound::Audio::Execute): level from the slider, muted exactly at 0. The
   // mute is written only when it changes, so a drag costs one call per step.
   void SetValue(float value) {
     if (!volume_)

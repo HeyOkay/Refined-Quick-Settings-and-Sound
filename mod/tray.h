@@ -3,19 +3,24 @@
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <iphlpapi.h>
+#include <optional>
 namespace native::tray {
 inline std::atomic<bool> stopping{false}, moduleHooked{false};
 
 // Globals that own threads, COM objects or XAML references are never destroyed
 // by the C++ runtime: Shutdown releases them explicitly, and destructors run at
 // process exit after other modules are gone.
-[[clang::no_destroy]] inline sound::Audio audio;
+[[clang::no_destroy]] inline std::optional<sound::Audio> audio; // emplaced in Initialize, reset in Shutdown
+// Display on / resume: the volume icons are rebuilt (their Lottie picture can
+// come back on its Mute frame), on each taskbar's own thread via the pulse.
+[[clang::no_destroy]] inline std::optional<sound::PowerWake> powerWake;
+inline std::atomic<unsigned> redrawGeneration{0}; // each record redraws once per wake
 inline HINSTANCE moduleInstance = nullptr;
 struct Job {
   std::function<void()> call;
 };
 inline std::mutex jobsMutex, recordsMutex;
-[[clang::no_destroy]] inline std::map<UINT_PTR, std::shared_ptr<Job>> jobs;
+inline std::map<UINT_PTR, std::shared_ptr<Job>> jobs;
 inline std::atomic<UINT_PTR> nextJob{0};
 inline UINT dispatchMessage = RegisterWindowMessageW(L"Windhawk.SoundPanel.ThreadDispatch.1");
 inline LRESULT CALLBACK DispatchHook(int code, WPARAM w, LPARAM l) {
@@ -117,17 +122,32 @@ inline X::XamlRoot Root(HWND taskbar) {
   }
   if (!site)
     return nullptr;
+  // Offset of the taskbar element's IUnknown inside TaskbarHost, read from
+  // the start of TaskbarHost::FrameHeight (same patterns as taskbar-multirow).
+  size_t offset = 0;
+#if defined(_M_X64)
+  // sub rsp, imm8 / add rcx, offset
   auto code = static_cast<BYTE const *>(frameHeight);
-  if (!Readable(code, 8) || code[0] != 0x48 || code[1] != 0x83 || code[2] != 0xec ||
-      code[4] != 0x48 || code[5] != 0x83 || code[6] != 0xc1 || code[7] > 0x7f) {
-    Wh_Log(L"Unsupported TaskbarHost layout; native icon retained");
+  if (Readable(code, 8) && code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xec &&
+      code[4] == 0x48 && code[5] == 0x83 && code[6] == 0xc1 && code[7] <= 0x7f)
+    offset = code[7];
+#elif defined(_M_ARM64)
+  // pacibsp / stp fp, lr, [sp, #-0x10]! / mov fp, sp / ldr x8, [x0, #offset]!
+  auto code = static_cast<DWORD const *>(frameHeight);
+  if (Readable(code, 4 * sizeof(DWORD)) && code[0] == 0xD503237F &&
+      (code[1] & 0xFFC07FFF) == 0xA9807BFD && code[2] == 0x910003FD &&
+      (code[3] & 0xFFF00FE0) == 0xF8400C00)
+    offset = (code[3] >> 12) & 0xFF;
+#endif
+  if (!offset) {
+    Wh_Log(L"Unsupported TaskbarHost layout; existing icons are styled when recreated");
     return nullptr;
   }
   void *shared[2]{};
   getHost(site, shared);
   X::XamlRoot root{nullptr};
   if (shared[0]) {
-    auto address = reinterpret_cast<IUnknown **>(static_cast<BYTE *>(shared[0]) + code[7]);
+    auto address = reinterpret_cast<IUnknown **>(static_cast<BYTE *>(shared[0]) + offset);
     if (Readable(address, sizeof(void *)) && *address)
       try {
         X::FrameworkElement value{nullptr};
@@ -151,6 +171,7 @@ struct Record {
   winrt::event_token loaded{}, tick{};
   Journal glyphJournal;
   std::shared_ptr<AnimatedVolume> animated;
+  unsigned redrawn = 0;
   std::vector<std::function<void()>> glyphRevoke;
   int displayed = -1, hiddenCount = -1;
   unsigned attempts = 0;
@@ -209,7 +230,14 @@ inline int NetworkLeaf(X::DependencyObject const &node) {
   return 0;
 }
 // A wired hardware adapter with its medium connected (not Hyper-V/WSL/VPN virtual ones).
-inline bool WiredConnected() {
+// Cached between network changes: NotifyIpInterfaceChange clears the cache,
+// so the interface table is read only after a change, not on every tick.
+inline std::atomic<int> wiredCache{-1};
+inline HANDLE ipNotification = nullptr;
+inline void CALLBACK IpInterfaceChanged(PVOID, PMIB_IPINTERFACE_ROW, MIB_NOTIFICATION_TYPE) {
+  wiredCache = -1;
+}
+inline bool ReadWiredConnected() {
   PMIB_IF_TABLE2 table = nullptr;
   if (GetIfTable2(&table) != NO_ERROR || !table)
     return false;
@@ -223,6 +251,14 @@ inline bool WiredConnected() {
   }
   FreeMibTable(table);
   return found;
+}
+inline bool WiredConnected() {
+  int cached = wiredCache;
+  if (cached >= 0 && ipNotification)
+    return cached == 1;
+  bool value = ReadWiredConnected();
+  wiredCache = value ? 1 : 0;
+  return value;
 }
 inline M::Brush LeafBrush(X::FrameworkElement const &leaf) {
   if (auto text = leaf.try_as<C::TextBlock>())
@@ -489,7 +525,9 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
     RefreshNetwork(record, icon);
     return;
   }
-  auto state = audio.Get();
+  if (!audio)
+    return;
+  auto state = audio->Get();
   auto native = record->native.get();
   auto parent = record->parent.get();
   if (!native || !parent)
@@ -509,7 +547,7 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
     // Construct and attach the real system AnimatedIcon before suppressing
     // any native leaf. Failure leaves the original taskbar icon visible.
     auto animated = std::make_shared<AnimatedVolume>();
-    auto replacement = animated->Element();
+    auto replacement = animated->Isolated();
     replacement.Name(L"NativeSoundTrayGlyph");
     if (auto grid = parent.try_as<C::Grid>()) {
       C::Grid::SetColumnSpan(replacement, std::max(1u, grid.ColumnDefinitions().Size()));
@@ -578,7 +616,7 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
   }
 }
 inline std::mutex pulsesMutex;
-[[clang::no_destroy]] inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
+inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
 inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l, DWORD_PTR) {
   if (message == volumePulseMessage) {
     {
@@ -594,8 +632,14 @@ inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l
           if (record->taskbar == window && record->attached)
             local.push_back(record);
       }
+      unsigned generation = redrawGeneration;
       for (auto const &record : local)
         try {
+          if (record->redrawn != generation) {
+            record->redrawn = generation;
+            if (record->animated)
+              record->animated->Redraw();
+          }
           Refresh(record);
         } catch (...) {
           Wh_Log(L"TrayAnimationError %08X", winrt::to_hresult());
@@ -821,6 +865,15 @@ inline HMODULE WINAPI Loaded(LPCWSTR path, HANDLE file, DWORD flags) {
 inline bool Initialize(HINSTANCE instance) {
   moduleInstance = instance;
   stopping = false;
+  audio.emplace();
+  powerWake.emplace([] {
+    ++redrawGeneration;
+    VolumeChanged();
+  });
+  wiredCache = -1;
+  if (NotifyIpInterfaceChange(AF_UNSPEC, IpInterfaceChanged, nullptr, FALSE, &ipNotification) !=
+      NO_ERROR)
+    ipNotification = nullptr;
   auto taskbar = GetModuleHandleW(L"Taskbar.dll");
   if (!taskbar)
     taskbar = LoadLibraryExW(L"taskbar.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -841,14 +894,14 @@ inline bool Initialize(HINSTANCE instance) {
     moduleHooked = true;
     auto result = HookTray(module);
     if (result)
-      audio.Start(VolumeChanged);
+      audio->Start(VolumeChanged);
     return result;
   }
   auto load =
       reinterpret_cast<Load>(GetProcAddress(GetModuleHandleW(L"kernelbase.dll"), "LoadLibraryExW"));
   auto result = WindhawkUtils::SetFunctionHook(load, Loaded, &originalLoad);
   if (result)
-    audio.Start(VolumeChanged);
+    audio->Start(VolumeChanged);
   return result;
 }
 inline void AttachExisting() {
@@ -870,12 +923,18 @@ inline void AttachExisting() {
 }
 inline void Shutdown() {
   stopping = true;
+  powerWake.reset();
+  if (ipNotification) {
+    CancelMibChangeNotify2(ipNotification); // waits for a running callback
+    ipNotification = nullptr;
+  }
   {
     std::lock_guard lock(pulsesMutex);
     for (auto const &[window, pulse] : pulses)
       pulse->active = false;
   }
-  audio.Stop();
+  if (audio)
+    audio->Stop();
   std::vector<HWND> windows = Taskbars();
   {
     std::lock_guard lock(recordsMutex);
@@ -918,5 +977,12 @@ inline void Shutdown() {
     std::lock_guard lock(pulsesMutex);
     pulses.clear();
   }
+  // The no_destroy globals give their contents back here, not at process exit.
+  {
+    std::lock_guard lock(recordsMutex);
+    records.clear();
+    records.shrink_to_fit();
+  }
+  audio.reset();
 }
 } // namespace native::tray

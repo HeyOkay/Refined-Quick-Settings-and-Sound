@@ -33,7 +33,7 @@ Mod ID: `refined-quick-settings-and-sound`. The version is in `mod/sound-native.
 
 ## Compatibility
 
-Windows 11, x86-64. Development testing was performed on build **26300**, primarily at **125%** display scale. Other builds and scales need validation; this mod depends on internal shell XAML elements and symbols that Windows updates can change. Added labels such as “Sound” and “Input device” are in English. DDC/CI brightness requires a compatible monitor with DDC/CI enabled in its settings.
+Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64 (ARM64 is untested). Development testing was performed on build **26300**, primarily at **125%** display scale. Other builds and scales need validation; this mod depends on internal shell XAML elements and symbols that Windows updates can change. Added labels such as “Sound” and “Input device” are in English. DDC/CI brightness requires a compatible monitor with DDC/CI enabled in its settings.
 
 The mixer starts collapsed on the first Sound opening in each ShellHost process; subsequent openings remember its state. Disable other mods or styling rules that modify the same Quick Settings, Sound or taskbar volume elements.
 

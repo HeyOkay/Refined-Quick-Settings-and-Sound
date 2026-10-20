@@ -32,7 +32,7 @@ struct Job {
   std::function<void()> action;
 };
 inline std::mutex jobsMutex;
-[[clang::no_destroy]] inline std::map<UINT_PTR, Job *> jobs;
+inline std::map<UINT_PTR, Job *> jobs;
 inline std::atomic<UINT_PTR> nextJob = 0;
 inline LRESULT CALLBACK DispatchHook(int code, WPARAM w, LPARAM l) {
   if (code >= 0) {
@@ -87,7 +87,7 @@ inline bool BeginRelease();
 inline bool FinishRelease();
 inline bool Reconnect();
 inline std::mutex runtimesMutex;
-[[clang::no_destroy]] inline std::map<DWORD, Runtime *> runtimes;
+inline std::map<DWORD, Runtime *> runtimes;
 struct Runtime {
   HWND window = nullptr;
   // The UI thread's queue: the unload path reaches the thread through it when
@@ -96,18 +96,7 @@ struct Runtime {
   // While the panel is hidden the maintenance timer stops; showing or
   // uncloaking the panel window starts it again (WinEvent hooks, UI thread).
   HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr;
-  bool Hidden() const {
-    if (!window || !IsWindowVisible(window))
-      return true;
-    using Dwm = HRESULT(WINAPI *)(HWND, DWORD, void *, DWORD);
-    static auto get = [] {
-      auto dll = LoadLibraryExW(L"dwmapi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-      return dll ? reinterpret_cast<Dwm>(GetProcAddress(dll, "DwmGetWindowAttribute")) : nullptr;
-    }();
-    DWORD cloaked = 0;
-    return get && SUCCEEDED(get(window, 14 /*DWMWA_CLOAKED*/, &cloaked, sizeof(cloaked))) &&
-           cloaked;
-  }
+  bool Hidden() const { return !WindowShown(window); }
   void Wake() {
     if (timer && !stopping) {
       timer.Interval(std::chrono::milliseconds(200));
@@ -607,10 +596,19 @@ struct Runtime {
 };
 // Stopped and reset by StopBridge; never destroyed at thread or process exit.
 [[clang::no_destroy]] inline thread_local std::unique_ptr<Runtime> runtime;
+// Matched by window class, not by the stored handle: the shell can recreate
+// the panel window while the timer is stopped.
 inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND window, LONG object, LONG, DWORD,
                                 DWORD) {
-  if (object == OBJID_WINDOW && runtime && window == runtime->window)
-    runtime->Wake();
+  if (object != OBJID_WINDOW || !runtime || !window)
+    return;
+  WCHAR name[96]{};
+  GetClassNameW(window, name, 96);
+  if (_wcsicmp(name, L"ControlCenterWindow"))
+    return;
+  if (runtime->window != window)
+    runtime->window = window;
+  runtime->Wake();
 }
 inline thread_local bool compositionDisabled = false;
 class Watcher : public winrt::implements<Watcher, IVisualTreeServiceCallback2, winrt::non_agile> {
@@ -870,10 +868,16 @@ inline void StopBridge() {
     current = std::move(watcher);
     retired = std::move(retiredWatcher);
   }
-  if (current)
+  // Each watcher is released right after it stops, so the Runtime's reference,
+  // dropped on the UI thread below, is the last one to IXamlDiagnostics.
+  if (current) {
     current->Stop();
-  if (retired)
+    current = nullptr;
+  }
+  if (retired) {
     retired->Stop();
+    retired = nullptr;
+  }
   std::vector<std::pair<DWORD, Runtime *>> copy;
   {
     std::lock_guard lock(runtimesMutex);
@@ -892,6 +896,8 @@ inline void StopBridge() {
       continue;
     // No usable window: queue the stop on the thread's DispatcherQueue and
     // wait for it, so no Runtime (timer, handlers) outlives the module.
+    // Waits without a timeout, like SendMessageW in Dispatch: the queued stop
+    // must not run after the module is gone.
     bool stopped = false;
     if (auto queue = state->queue)
       if (auto done = CreateEventW(nullptr, TRUE, FALSE, nullptr)) {
@@ -899,9 +905,8 @@ inline void StopBridge() {
               stop();
               SetEvent(done);
             }))
-          stopped = WaitForSingleObject(done, 10000) == WAIT_OBJECT_0;
-        if (stopped)
-          CloseHandle(done);
+          stopped = WaitForSingleObject(done, INFINITE) == WAIT_OBJECT_0;
+        CloseHandle(done);
       }
     if (!stopped)
       Wh_Log(L"Runtime on thread %u could not be stopped before unload", thread);

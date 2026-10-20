@@ -262,7 +262,7 @@ class SoundPage {
   // buttons 1 px low. Margins, not transforms, keep the glyphs on the pixel grid.
   static constexpr double listGlyphDrop = .8, buttonGlyphRaise = .8;
   std::set<void *> thinSliders_;
-  // Thin look: slider-look.h. VM rows keep the right edge on the badge column.
+  // Thin look: SliderLook. VM rows keep the right edge on the badge column.
   void ThinSlider(C::Slider const &slider) {
     SliderLook{journal_, revoke_, thinSliders_, slider == master_}.Thin(
         slider, [this, slider](double half) {
@@ -1318,7 +1318,7 @@ public:
       Set(back, X::FrameworkElement::MinHeightProperty(), winrt::box_value(0.));
       Set(back, X::FrameworkElement::MarginProperty(),
           winrt::box_value(X::Thickness{16, 0, 12, 0}));
-      // Hiding the page (exit.h): its command is wrapped; weak references only,
+      // Hiding the page (ExitWithSnapshot): its command is wrapped; weak references only,
       // an abandoned page keeps the wrapper.
       if (auto original = back.Command()) {
         auto weakPage = winrt::make_weak(page_);
@@ -1472,8 +1472,6 @@ public:
       rowsDirty_ = true;
       prepared_ = true;
       preparing_ = false;
-      auto presets = L"wanted=" + std::to_wstring(wantedHeight_) + L" items=" +
-                     std::to_wstring(mixerList_.Items().Size());
       if (!DataReady(false))
         StartGate();
       RememberHeight();

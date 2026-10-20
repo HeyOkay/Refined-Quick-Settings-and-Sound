@@ -75,7 +75,7 @@ class QuickPage {
     return done_.insert({winrt::get_abi(object), tag}).second;
   }
   SliderLook Look() { return {journal_, revoke_, thinSliders_}; }
-  // The volume row's own slider and mute button (quick-volume.h).
+  // The volume row's own slider and mute button (QuickVolume).
   std::unique_ptr<QuickVolume> quickVolume_;
   C::Slider quickSlider_{nullptr};
   C::Button quickMute_{nullptr};
@@ -183,7 +183,7 @@ class QuickPage {
     }
     if (alignPasses_ >= 4)
       return;
-    // The pixel row of the drawn 1 DIP rail (slider-look.h), not the slider's
+    // The pixel row of the drawn 1 DIP rail (SliderLook), not the slider's
     // centre: at 125% the centre falls on half pixels.
     auto centre = [&](X::FrameworkElement const &e) {
       X::FrameworkElement rail = Named(e, L"NativeSoundRail");
@@ -664,19 +664,7 @@ class QuickPage {
     auto group = Named(view_, L"SlidersGroup");
     return group && Named(group, L"BrightnessPlayer");
   }
-  bool PanelVisible() {
-    if (!host_ || !IsWindowVisible(host_))
-      return false;
-    using Dwm = HRESULT(WINAPI *)(HWND, DWORD, void *, DWORD);
-    static auto get = [] {
-      auto dll = LoadLibraryExW(L"dwmapi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-      return dll ? reinterpret_cast<Dwm>(GetProcAddress(dll, "DwmGetWindowAttribute")) : nullptr;
-    }();
-    DWORD cloaked = 0;
-    if (get && SUCCEEDED(get(host_, 14 /*DWMWA_CLOAKED*/, &cloaked, sizeof(cloaked))) && cloaked)
-      return false;
-    return true;
-  }
+  bool PanelVisible() { return WindowShown(host_); }
   void ApplyBright(int value) {
     if (!brightRow_)
       return;
@@ -812,7 +800,7 @@ class QuickPage {
   // cell, with the system QA_Volume asset driven by Core Audio and the slider.
   // The mod's icon cannot live inside the native ToggleButton: the shell owns
   // that button and puts its own icon and Mute state back.
-  // The volume row: the mod's own slider (quick-volume.h) and mute button. The
+  // The volume row: the mod's own slider (QuickVolume) and mute button. The
   // native slider stays in the layout, transparent, without hit testing, tab
   // stop or UI Automation presence, so the shell's row keeps its size; the
   // native ToggleButton leaves the row and is put back on unload.
@@ -1020,7 +1008,7 @@ class QuickPage {
         for (auto const &child : row.Children())
           if (auto toggle = child.try_as<P::ToggleButton>())
             SmallButton(toggle);
-      // Hiding Quick Settings on the way to Sound (exit.h).
+      // Hiding Quick Settings on the way to Sound (ExitWithSnapshot).
       if (auto original = l2.Command()) {
         auto weakView = winrt::make_weak(view_);
         Set(l2, P::ButtonBase::CommandProperty(),
@@ -1214,7 +1202,7 @@ class QuickPage {
         return;
       RefreshVolume();
       // Back from Sound: L1Grid visible again; the transparency set for the
-      // hiding picture (exit.h) and the mute glyph state are refreshed.
+      // hiding picture (ExitWithSnapshot) and the mute glyph state are refreshed.
       if (First(l1, 9)) {
         auto weak = winrt::make_weak(l1);
         auto token = l1.RegisterPropertyChangedCallback(

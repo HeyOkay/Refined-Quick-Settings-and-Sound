@@ -61,7 +61,7 @@ class AnimatedVolume {
   int64_t stateToken_ = 0;
   bool reapplying_ = false;
   ULONGLONG changedAt_ = 0;
-  winrt::event_token loadedToken_{};
+  winrt::event_token loadedToken_{}, lostToken_{};
   U::AnimatedIcon loading_{nullptr};
   static constexpr ULONGLONG transitionMs = 700; // QA_Volume transitions are shorter
   U::AnimatedIcon Make() {
@@ -159,10 +159,22 @@ public:
     host_.HorizontalAlignment(X::HorizontalAlignment::Center);
     host_.VerticalAlignment(X::VerticalAlignment::Center);
     host_.Children().Append(icon_);
+    // After the graphics device was lost (display off and on, sleep) the
+    // Lottie picture comes back on its first frame (the Mute pose) while
+    // State keeps its value, so the icon is rebuilt at its current state.
+    try {
+      lostToken_ = M::CompositionTarget::SurfaceContentsLost([this](auto &&, auto &&) { Redraw(); });
+    } catch (...) {
+    }
   }
   AnimatedVolume(AnimatedVolume const &) = delete;
   AnimatedVolume &operator=(AnimatedVolume const &) = delete;
   ~AnimatedVolume() {
+    if (lostToken_)
+      try {
+        M::CompositionTarget::SurfaceContentsLost(lostToken_);
+      } catch (...) {
+      }
     Unwatch();
     if (loading_)
       try {
@@ -181,8 +193,17 @@ public:
     } catch (...) {
     }
   }
+  // A fresh icon showing the current state, without a transition.
+  void Redraw() {
+    if (state_.empty() || !host_ || !host_.IsLoaded())
+      return;
+    try {
+      Fresh(state_);
+    } catch (...) {
+      Wh_Log(L"VolumeIconRedrawError %08X", winrt::to_hresult());
+    }
+  }
   // Always the isolating Grid (the icon inside it is replaced).
-  X::FrameworkElement Element() { return host_; }
   X::FrameworkElement Isolated() { return host_; }
   void Update(float value, bool muted, bool available = true) {
     std::wstring state = available ? VolumeState(value, muted) : L"Disabled";
