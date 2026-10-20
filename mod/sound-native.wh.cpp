@@ -1,0 +1,96 @@
+// ==WindhawkMod==
+// @id refined-quick-settings-and-sound
+// @name Refined Quick Settings and Sound
+// @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
+// @version 0.1.140
+// @author HeyOkay
+// @github https://github.com/HeyOkay
+// @include explorer.exe
+// @include ShellHost.exe
+// @include ShellExperienceHost.exe
+// @architecture x86-64
+// @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lversion -luuid
+// @license GPL-3.0-only
+// ==/WindhawkMod==
+// ==WindhawkModReadme==
+/*
+# Refined Quick Settings and Sound
+
+This "vanilla+" Windhawk mod reworks the Windows 11 "Quick Settings" and
+"Volume mixer" panels and makes them fit for daily use. It follows the
+Windows 11 design language, refining existing features and adding new ones:
+thin sliders, even row spacing at every display scale and a smooth frame
+transition to the Sound page.
+
+Everything runs inside the shell's own panels (ShellHost): no extra windows,
+the system Acrylic, fonts, themes, lists, bindings and animations are kept, and
+customizations are restored when the mod is unloaded.
+
+## Features
+
+**Quick Settings**
+
+- Brightness control for DDC/CI-compatible displays, with animated glyphs.
+- Press the brightness glyph to toggle night light on and off.
+- Open display settings directly from the glyph on the right side of the slider.
+
+**Sound**
+
+- The "Sound output" page is now simply "Sound".
+- Change the output and input devices and the spatial sound provider from
+  dropdown lists.
+- Below them, a reworked Volume mixer for the apps. It is collapsible and
+  remembers its last state.
+- Mouse wheel on every slider; press an app's icon to mute and restore it, or
+  its volume number to set it to 100.
+- Hide apps from the mixer by name (setting below).
+
+**Taskbar**
+
+- Click the volume icon to open Sound directly.
+- The system's animated volume glyph and an Ethernet glyph for wired networks.
+
+## Compatibility
+
+- Windows 11, x86-64. Development testing: build 26300, primarily at 125% scale.
+- Other Windows builds and display scales need validation. The mod depends on
+  internal shell XAML elements and symbols which can change with Windows updates.
+- DDC/CI brightness requires a compatible monitor with DDC/CI enabled.
+- Added labels such as "Sound" and "Input device" are in English.
+- The first Sound opening in each ShellHost process starts with the mixer
+  collapsed; subsequent openings remember its state.
+
+## Notes
+
+Disable other mods that change the Quick Settings, the Sound page or the
+taskbar volume icon before enabling this one. Errors are written to the
+Windhawk log.
+
+## Credits and license
+
+GPL-3.0-only. The XAML Diagnostics connection approach follows
+[m417z's Notification Center Styler](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/windows-11-notification-center-styler.wh.cpp)
+(GPL-3.0). The hidden-applications parser is adapted from the local
+Sound Output Direct and Taller mod (GPL-3.0-only).
+The sliders-horizontal and ethernet-port icons are from
+[Lucide](https://lucide.dev/) (ISC); the license notice is included below
+in this source file.
+*/
+// ==/WindhawkModReadme==
+// ==WindhawkModSettings==
+/*
+- hiddenApps: ""
+  $name: Hidden applications
+  $description: Parts of application names, separated by semicolons, to hide from the volume mixer. Hiding does not mute them.
+*/
+// ==/WindhawkModSettings==
+#include "host.h"
+#include "tray.h"
+namespace native {
+inline bool explorer=false;
+inline void Settings(){auto raw=Wh_GetStringSetting(L"hiddenApps");hidden=sound::ParseHidden(raw?raw:L"");Wh_FreeStringSetting(raw);}
+}
+BOOL Wh_ModInit(){using namespace native;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(&Wh_ModInit),&module);WCHAR path[32768]{};GetModuleFileNameW(nullptr,path,32768);explorer=!_wcsicmp(PathFindFileNameW(path),L"explorer.exe");stopping=false;Settings();if(explorer){if(!tray::Initialize(module)){tray::Shutdown();return FALSE;}return TRUE;}return InitializeHost();}
+void Wh_ModAfterInit(){if(native::explorer){native::tray::AttachExisting();}else native::StartBridge();}
+void Wh_ModUninit(){native::stopping=true;if(native::explorer){native::tray::Shutdown();}else native::StopBridge();}
+void Wh_ModSettingsChanged(BOOL* reload){*reload=TRUE;}
