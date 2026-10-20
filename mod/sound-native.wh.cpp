@@ -89,10 +89,46 @@ in this source file.
 #include "host.h"
 #include "tray.h"
 namespace native {
-inline bool explorer=false;
-inline void Settings(){auto raw=Wh_GetStringSetting(L"hiddenApps");hidden=sound::ParseHidden(raw?raw:L"");Wh_FreeStringSetting(raw);}
+inline bool explorer = false;
+inline void Settings() {
+  auto raw = Wh_GetStringSetting(L"hiddenApps");
+  hidden = sound::ParseHidden(raw ? raw : L"");
+  Wh_FreeStringSetting(raw);
 }
-BOOL Wh_ModInit(){using namespace native;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(&Wh_ModInit),&module);WCHAR path[32768]{};GetModuleFileNameW(nullptr,path,32768);explorer=!_wcsicmp(PathFindFileNameW(path),L"explorer.exe");stopping=false;Settings();if(explorer){if(!tray::Initialize(module)){tray::Shutdown();return FALSE;}return TRUE;}return InitializeHost();}
-void Wh_ModAfterInit(){if(native::explorer){native::tray::AttachExisting();}else native::StartBridge();}
-void Wh_ModUninit(){native::stopping=true;if(native::explorer){native::tray::Shutdown();}else native::StopBridge();}
-void Wh_ModSettingsChanged(BOOL* reload){*reload=TRUE;}
+} // namespace native
+BOOL Wh_ModInit() {
+  using namespace native;
+  GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                         GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                     reinterpret_cast<LPCWSTR>(&Wh_ModInit), &module);
+  WCHAR path[32768]{};
+  GetModuleFileNameW(nullptr, path, 32768);
+  explorer = !_wcsicmp(PathFindFileNameW(path), L"explorer.exe");
+  stopping = false;
+  Settings();
+  if (explorer) {
+    if (!tray::Initialize(module)) {
+      tray::Shutdown();
+      return FALSE;
+    }
+    return TRUE;
+  }
+  return InitializeHost();
+}
+void Wh_ModAfterInit() {
+  if (native::explorer) {
+    native::tray::AttachExisting();
+  } else
+    native::StartBridge();
+}
+void Wh_ModUninit() {
+  native::stopping = true;
+  if (native::explorer) {
+    native::tray::Shutdown();
+  } else
+    native::StopBridge();
+}
+BOOL Wh_ModSettingsChanged(BOOL *reload) {
+  *reload = TRUE;
+  return TRUE;
+}
