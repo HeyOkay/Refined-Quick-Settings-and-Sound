@@ -2,7 +2,7 @@
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
 // @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.149
+// @version 0.1.153
 // @author HeyOkay
 // @github https://github.com/HeyOkay
 // @include explorer.exe
