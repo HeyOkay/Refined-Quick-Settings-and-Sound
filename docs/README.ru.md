@@ -2,9 +2,9 @@
 
 [English](../README.md)
 
-| Тёмная тема | Светлая тема |
-| --- | --- |
-| <img src="assets/preview-lossless.webp?v=01bbd42" alt="Тёмная тема" width="480"> | <img src="assets/preview-light-lossless.webp" alt="Светлая тема" width="480"> |
+![Тёмная тема](assets/preview-lossless.webp?v=01bbd42)
+
+![Светлая тема](assets/preview-light-lossless.webp)
 
 Этот «vanilla+» мод для Windhawk перерабатывает панели «Быстрые настройки» и «Микшер громкости» Windows 11 и делает их пригодными для ежедневного использования. Он следует языку дизайна Windows 11, дорабатывая существующие функции и добавляя новые: тонкие ползунки, ровный шаг рядов при любом масштабе экрана и плавный переход рамки к странице «Звук».
 
