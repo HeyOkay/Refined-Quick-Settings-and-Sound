@@ -2,7 +2,9 @@
 
 [Русский](docs/README.ru.md)
 
-![Quick Settings and Sound preview](docs/assets/preview-lossless.webp)
+| Dark theme | Light theme |
+| --- | --- |
+| <img src="docs/assets/preview-lossless.webp?v=01bbd42" alt="Dark theme" width="480"> | <img src="docs/assets/preview-light-lossless.webp" alt="Light theme" width="480"> |
 
 This "vanilla+" Windhawk mod reworks the Windows 11 "Quick Settings" and "Volume mixer" panels and makes them fit for daily use. It follows the Windows 11 design language, refining existing features and adding new ones: thin sliders, even row spacing at every display scale and a smooth frame transition to the Sound page.
 
