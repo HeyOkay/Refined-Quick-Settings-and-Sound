@@ -242,7 +242,7 @@ struct Runtime {
     if (!Named(page, L"OutputGroupTitle"))
       return;
     auto pulse = volumePulse;
-    auto patch = std::make_unique<SoundPage>(page, window, ModelAccess{}, [pulse] {
+    auto patch = std::make_unique<SoundPage>(page, window, [pulse] {
       if (pulse)
         pulse->Post();
     });
@@ -614,39 +614,11 @@ inline void StopBridge() {
                                                                      : ThreadWindow(thread);
     if (handle && GetWindowThreadProcessId(handle, nullptr) == thread && Dispatch(handle, stop))
       continue;
-    auto cleaned = std::make_shared<std::atomic<bool>>(false);
-    bool stopped = false;
-    try {
-      // Keep a local dispatcher reference: stop() destroys the Runtime.
-      if (auto dispatcher = state->dispatcher) {
-        auto operation = dispatcher.RunAsync(
-            winrt::Windows::UI::Core::CoreDispatcherPriority::High, [stop, cleaned] {
-              try {
-                stop();
-                *cleaned = true;
-              } catch (...) {
-                Wh_Log(L"Control Center shutdown: %08X", winrt::to_hresult());
-              }
-            });
-        // AsyncStatus becomes Completed after the UI delegate returns. An
-        // event signaled inside the delegate could wake unload too early.
-        // This short wait exists only during unload, never in the background.
-        while (operation.Status() == winrt::Windows::Foundation::AsyncStatus::Started)
-          Sleep(1);
-        stopped = operation.Status() == winrt::Windows::Foundation::AsyncStatus::Completed &&
-                  cleaned->load();
-      }
-    } catch (...) {
-      Wh_Log(L"Control Center shutdown dispatch: %08X", winrt::to_hresult());
-    }
-    if (!stopped) {
-      // Wh_ModUninit cannot refuse unload. In this exceptional failure case,
-      // retain a module reference rather than leave live callbacks unmapped.
-      HMODULE retained = nullptr;
-      GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                         reinterpret_cast<LPCWSTR>(&StopBridge), &retained);
-      Wh_Log(L"Could not stop UI thread %u; keeping module loaded for its callbacks", thread);
-    }
+    // A dispatcher shutting down can complete without invoking the delegate.
+    // Keep unreachable thread-affine state, but never pin this mod's DLL.
+    auto dispatcher = state->dispatcher;
+    if (!DispatchCleanup(dispatcher, stop))
+      Wh_Log(L"Control Center UI thread %u is shutting down; retaining its XAML state", thread);
   }
 }
 } // namespace native

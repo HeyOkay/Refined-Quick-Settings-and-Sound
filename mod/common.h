@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <windhawk_utils.h>
-#include <ocidl.h>
+#include <unknwn.h>
 #include <mutex>
 #include <set>
 #include <map>
@@ -41,9 +41,40 @@ using winrt::Windows::Foundation::IInspectable;
 inline std::atomic<bool> stopping = false;
 inline HMODULE module = nullptr;
 inline std::vector<std::wstring> hidden;
+inline UINT volumePulseMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.VolumePulse.1");
+// Used only while unloading. Wait for the asynchronous operation itself,
+// not an event set inside its delegate: the DLL must outlive the delegate's return.
+inline bool DispatchCleanup(winrt::Windows::UI::Core::CoreDispatcher const &dispatcher,
+                            std::function<void()> action) {
+  if (!dispatcher)
+    return false;
+  try {
+    if (dispatcher.HasThreadAccess()) {
+      action();
+      return true;
+    }
+    auto cleaned = std::make_shared<std::atomic<bool>>(false);
+    auto operation = dispatcher.RunAsync(
+        winrt::Windows::UI::Core::CoreDispatcherPriority::High,
+        [action = std::move(action), cleaned] {
+          try {
+            action();
+            *cleaned = true;
+          } catch (...) {
+            Wh_Log(L"UI shutdown cleanup: %08X", winrt::to_hresult());
+          }
+        });
+    while (operation.Status() == winrt::Windows::Foundation::AsyncStatus::Started)
+      Sleep(1);
+    return operation.Status() == winrt::Windows::Foundation::AsyncStatus::Completed &&
+           cleaned->load();
+  } catch (...) {
+    Wh_Log(L"UI shutdown dispatcher: %08X", winrt::to_hresult());
+    return false;
+  }
+}
 // Post only an integer message, never a callback or object pointer. Removing
 // the subclass on unload makes any remaining queued notifications harmless.
-inline UINT volumePulseMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.VolumePulse.1");
 struct VolumePulse {
   HWND window = nullptr;
   std::atomic<bool> active{true}, queued{false};
@@ -355,10 +386,6 @@ inline bool SetNumber(IInspectable const &model, PCWSTR name, double number) {
   }
   return false;
 }
-struct ModelAccess {
-  std::function<IInspectable(IInspectable const &, PCWSTR)> read;
-  std::function<bool(IInspectable const &, PCWSTR, double)> writeNumber;
-};
 // Let the shell's binding resolver access its model, including private XAML
 // property adapters. The displayed Slider and its Binding are never assigned.
 struct NumberRelay : winrt::implements<NumberRelay, D::IValueConverter> {

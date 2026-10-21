@@ -2,7 +2,7 @@
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
 // @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.153
+// @version 0.1.154
 // @author HeyOkay
 // @github https://github.com/HeyOkay
 // @include explorer.exe
@@ -63,7 +63,7 @@ customizations are restored when the mod is unloaded.
 - The first Sound opening in each ShellHost process starts with the mixer
   collapsed; subsequent openings remember its state.
 
-Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll and the public XAML visual tree; it does not open a XAML Diagnostics connection. Compatibility with other mods that edit the same controls still requires live testing. If the panel was already open when enabling this candidate, close and reopen it; restart ShellHost if it is not picked up.
+Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll and the public XAML visual tree; it does not open a XAML Diagnostics connection. Compatibility with other mods that edit the same controls still requires live testing. If the panel was already open when enabling the mod, close and reopen it; restart ShellHost if it is not picked up.
 
 ## Notes
 

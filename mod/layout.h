@@ -47,7 +47,6 @@ class SoundPage {
   HWND host_ = nullptr;
   std::shared_ptr<double> ownedHeight_ = std::make_shared<double>(NAN);
   double wantedHeight_ = 0;
-  ModelAccess access_;
   std::vector<std::shared_ptr<Menu>> menus_;
   std::vector<std::shared_ptr<AppRow>> rows_;
   std::vector<std::function<void()>> revoke_;
@@ -431,9 +430,7 @@ class SoundPage {
     return VolumeModel(slider);
   }
   IInspectable ReadModel(IInspectable const &object, PCWSTR name) {
-    if (auto value = ModelValue(object, name))
-      return value;
-    return access_.read ? access_.read(object, name) : nullptr;
+    return ModelValue(object, name);
   }
   bool WriteVolume(C::Slider const &slider, IInspectable const &object, double number) {
     try {
@@ -448,7 +445,7 @@ class SoundPage {
     } catch (...) {
       Wh_Log(L"Binding relay: %08X", winrt::to_hresult());
     }
-    return access_.writeNumber && access_.writeNumber(object, L"Volume", number);
+    return false;
   }
   void ResizeNative() {
     if (!frame_ || !footerBorder_)
@@ -1211,9 +1208,9 @@ class SoundPage {
   }
 
 public:
-  explicit SoundPage(X::FrameworkElement const &page, HWND host, ModelAccess access,
+  explicit SoundPage(X::FrameworkElement const &page, HWND host,
                      std::function<void()> volumeChanged)
-      : page_(page), host_(host), access_(std::move(access)),
+      : page_(page), host_(host),
         volumeChanged_(std::move(volumeChanged)) {}
   void MasterGlyph(float value, bool muted) {
     if (masterAnimation_)

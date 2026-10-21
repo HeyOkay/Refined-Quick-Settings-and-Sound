@@ -164,6 +164,7 @@ inline X::XamlRoot Root(HWND taskbar) {
 struct Record {
   DWORD thread = 0;
   HWND taskbar = nullptr;
+  winrt::Windows::UI::Core::CoreDispatcher dispatcher{nullptr};
   winrt::weak_ref<X::FrameworkElement> icon, native;
   winrt::weak_ref<C::Panel> parent;
   X::FrameworkElement visual{nullptr};
@@ -693,6 +694,7 @@ inline void Observe(X::FrameworkElement const &element, HWND taskbar) {
   auto record = std::make_shared<Record>();
   record->thread = GetCurrentThreadId();
   record->taskbar = taskbar;
+  record->dispatcher = element.Dispatcher();
   record->icon = winrt::make_weak(element);
   std::weak_ptr<Record> weak = record;
   record->loaded = element.Loaded([weak](auto &&, auto &&) {
@@ -921,6 +923,39 @@ inline void AttachExisting() {
   }
   Wh_Log(L"Sound panel: attached %zu volume icons", attached);
 }
+// All XAML cleanup and the final Record destruction stay on the owner thread.
+// Leave a record in the no_destroy vector if cleanup fails partway through.
+inline void CleanupThreadRecords() {
+  std::vector<std::shared_ptr<Record>> local;
+  {
+    std::lock_guard lock(recordsMutex);
+    for (auto const &record : records)
+      if (record->thread == GetCurrentThreadId())
+        local.push_back(record);
+  }
+  for (auto const &record : local)
+    try {
+      if (record->timer) {
+        record->timer.Stop();
+        record->timer.Tick(record->tick);
+        record->timer = nullptr;
+      }
+      if (auto icon = record->icon.get(); icon && record->loaded.value) {
+        icon.Loaded(record->loaded);
+        record->loaded = {};
+      }
+      RestoreGlyphs(record);
+      RemoveVisual(record);
+      record->animated.reset();
+      std::lock_guard lock(recordsMutex);
+      auto it = std::find(records.begin(), records.end(), record);
+      if (it != records.end())
+        records.erase(it);
+    } catch (...) {
+      Wh_Log(L"Tray record cleanup on UI thread %u: %08X",
+             GetCurrentThreadId(), winrt::to_hresult());
+    }
+}
 inline void Shutdown() {
   stopping = true;
   powerWake.reset();
@@ -928,67 +963,65 @@ inline void Shutdown() {
     CancelMibChangeNotify2(ipNotification); // waits for a running callback
     ipNotification = nullptr;
   }
+  std::vector<HWND> windows = Taskbars();
+  auto rememberWindow = [&](HWND window) {
+    if (window && std::find(windows.begin(), windows.end(), window) == windows.end())
+      windows.push_back(window);
+  };
   {
     std::lock_guard lock(pulsesMutex);
-    for (auto const &[window, pulse] : pulses)
+    for (auto const &[window, pulse] : pulses) {
       pulse->active = false;
+      rememberWindow(window);
+    }
   }
   if (audio)
     audio->Stop();
-  std::vector<HWND> windows = Taskbars();
   {
     std::lock_guard lock(recordsMutex);
-    for (auto const &r : records)
-      if (r->taskbar && std::find(windows.begin(), windows.end(), r->taskbar) == windows.end())
-        windows.push_back(r->taskbar);
+    for (auto const &record : records)
+      rememberWindow(record->taskbar);
   }
-  for (auto window : windows)
-    if (IsWindow(window))
-      Dispatch(window, [window] {
-        WindhawkUtils::RemoveWindowSubclassFromAnyThread(window, VolumeProc);
-        std::vector<std::shared_ptr<Record>> local;
-        {
-          std::lock_guard lock(recordsMutex);
-          for (auto it = records.begin(); it != records.end();)
-            if ((*it)->thread == GetCurrentThreadId()) {
-              local.push_back(*it);
-              it = records.erase(it);
-            } else
-              ++it;
-        }
-        for (auto const &r : local) {
-          if (r->timer) {
-            r->timer.Stop();
-            r->timer.Tick(r->tick);
-          }
-          if (auto icon = r->icon.get()) {
-            icon.Loaded(r->loaded);
-          }
-          RestoreGlyphs(r);
-          if (auto parent = r->parent.get())
-            if (r->visual) {
-              uint32_t index;
-              if (parent.Children().IndexOf(r->visual, index))
-                parent.Children().RemoveAt(index);
-            }
-        }
-      });
+  for (auto window : windows) {
+    DWORD process = 0;
+    GetWindowThreadProcessId(window, &process);
+    if (process == GetCurrentProcessId()) {
+      // The subclass has its own synchronous removal message, independent
+      // of whether our window-dispatch hook can be installed.
+      WindhawkUtils::RemoveWindowSubclassFromAnyThread(window, VolumeProc);
+      Dispatch(window, CleanupThreadRecords);
+    }
+  }
+  std::map<DWORD, winrt::Windows::UI::Core::CoreDispatcher> remaining;
+  {
+    std::lock_guard lock(recordsMutex);
+    for (auto const &record : records)
+      remaining.try_emplace(record->thread, record->dispatcher);
+  }
+  for (auto const &[thread, dispatcher] : remaining) {
+    auto threadHandle = OpenThread(SYNCHRONIZE, FALSE, thread);
+    bool exited = threadHandle && WaitForSingleObject(threadHandle, 0) == WAIT_OBJECT_0;
+    if (threadHandle)
+      CloseHandle(threadHandle);
+    if (exited) {
+      Wh_Log(L"Tray UI thread %u has exited; retaining its XAML records", thread);
+      continue;
+    }
+    if (DispatchCleanup(dispatcher, CleanupThreadRecords))
+      Wh_Log(L"Tray shutdown: dispatcher cleanup ran on UI thread %u", thread);
+    else
+      Wh_Log(L"Tray UI thread %u is shutting down; retaining its XAML records", thread);
+  }
   {
     std::lock_guard lock(pulsesMutex);
     pulses.clear();
   }
-  // The no_destroy globals give their contents back here, not at process exit.
   {
     std::lock_guard lock(recordsMutex);
     if (records.empty())
       records.shrink_to_fit();
-    else {
-      HMODULE retained = nullptr;
-      GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                          reinterpret_cast<LPCWSTR>(&Shutdown), &retained);
-      Wh_Log(L"Retaining %zu tray records and the module: their UI thread was not reached",
-               records.size());
-    }
+    else
+      Wh_Log(L"Retaining %zu tray records on unreachable UI threads", records.size());
   }
   audio.reset();
 }
