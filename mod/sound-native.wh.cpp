@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.6.4
+// @version 0.6.5
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -720,30 +720,7 @@ inline ModSettings ReadSettings() {
     settings.quickActionRows = rowCount.front() - L'0';
   using S = sound::QuickShortcut;
   auto first = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut1");
-  const auto oldIcon = [&](PCWSTR key) { return !*first.get() || Wh_GetIntSetting(key) != 0; };
-  const auto icon = [](PCWSTR key, bool fallback) {
-    auto value = WindhawkUtils::StringSetting::make(key);
-    return *value.get() ? std::wstring_view(value.get()) == L"1" : fallback;
-  };
-  auto mixer = WindhawkUtils::StringSetting::make(L"alternativeIcons.mixerPlaces");
-  auto volume = WindhawkUtils::StringSetting::make(L"alternativeIcons.volumePlaces");
-  auto ethernet = WindhawkUtils::StringSetting::make(L"alternativeIcons.ethernetPlaces");
-  auto gear = WindhawkUtils::StringSetting::make(L"alternativeIcons.gearPlaces");
-  unsigned mixerPlaces = sound::IconPlaces(mixer.get(), 3,
-      oldIcon(L"alternativeIcons.quickMixer") | (oldIcon(L"alternativeIcons.soundMixer") << 1));
-  unsigned volumePlaces = sound::IconPlaces(volume.get(), 15,
-      oldIcon(L"alternativeIcons.trayVolume") | (oldIcon(L"alternativeIcons.quickVolume") << 1) |
-      (oldIcon(L"alternativeIcons.soundVolume") << 2) | (oldIcon(L"alternativeIcons.appUnmute") << 3));
-  settings.altQuickMixer = icon(L"alternativeIcons.mixer.quick", mixerPlaces & 1);
-  settings.altSoundMixer = icon(L"alternativeIcons.mixer.sound", mixerPlaces & 2);
-  settings.altTrayVolume = icon(L"alternativeIcons.volume.taskbar", volumePlaces & 1);
-  settings.altQuickVolume = icon(L"alternativeIcons.volume.quick", volumePlaces & 2);
-  settings.altSoundVolume = icon(L"alternativeIcons.volume.sound", volumePlaces & 4);
-  settings.altAppUnmute = icon(L"alternativeIcons.volume.apps", volumePlaces & 8);
-  settings.altTrayEthernet = icon(
-      L"alternativeIcons.ethernet.taskbar",
-      sound::IconPlaces(ethernet.get(), 1, oldIcon(L"alternativeIcons.trayEthernet")));
-  settings.altSoundGear = icon(L"alternativeIcons.gear.sound", sound::IconPlaces(gear.get(), 1, 1));
+  ReadAlternativeIcons(settings, Wh_GetIntSetting);
   if (*first.get()) {
     for (int i = 0; i < int(settings.quickShortcuts.size()); ++i) {
       auto slot = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut%d", i + 1);

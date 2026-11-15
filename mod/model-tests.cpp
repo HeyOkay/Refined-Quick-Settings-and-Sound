@@ -2,7 +2,7 @@
 #define WH_MOD
 #define WH_MOD_ID L"native-model-test"
 #include <windhawk_api.h>
-#include "common.h"
+#include "quick.h"
 #include <cstdio>
 namespace F = winrt::Windows::Foundation;
 struct Store {
@@ -81,6 +81,40 @@ int main() {
       return 9;
     }
     std::puts("PASS: Sound request tokens distinguish taps and reject stale shell events");
+    native::originalSetQuickRows = [](void *grid, int rows) { *static_cast<int *>(grid) = rows; };
+    native::updateQuickExtent = [](void *) {};
+    native::modSettings.quickActionRows = 1;
+    int nativeGrid = 0;
+    native::KeepQuickRows(&nativeGrid, 2);
+    if (nativeGrid != 2) {
+      std::puts("FAIL: Quick Settings rows were overridden before the grid was tracked");
+      return 10;
+    }
+    int secondGrid = 2;
+    if (!native::TrackQuickRows(&nativeGrid, nativeGrid, 1) ||
+        !native::TrackQuickRows(&secondGrid, secondGrid, 3)) {
+      std::puts("FAIL: Quick Settings grids did not acquire separate overrides");
+      return 10;
+    }
+    native::KeepQuickRows(&nativeGrid, 2);
+    native::KeepQuickRows(&secondGrid, 2);
+    if (nativeGrid != 1 || secondGrid != 3) {
+      std::puts("FAIL: Quick Settings grids did not apply their selected row counts");
+      return 10;
+    }
+    native::KeepQuickRows(&secondGrid, 1);
+    native::RestoreQuickRows(&nativeGrid);
+    native::RestoreQuickRows(&secondGrid);
+    if (nativeGrid != 2 || secondGrid != 1) {
+      std::puts("FAIL: Quick Settings grids did not restore the latest native row counts");
+      return 10;
+    }
+    native::KeepQuickRows(&secondGrid, 2);
+    if (secondGrid != 2) {
+      std::puts("FAIL: Quick Settings still overrides rows after restoration");
+      return 10;
+    }
+    std::puts("PASS: Quick Settings preserves and restores the native row count per grid");
     using Shortcut = sound::QuickShortcut;
     auto buttons = sound::QuickShortcuts(
         {Shortcut::Display, Shortcut::None, Shortcut::Display, Shortcut::Power, Shortcut::Power},
@@ -127,14 +161,35 @@ int main() {
       return 7;
     }
     std::puts("PASS: Volume wheel and hidden app setting behavior");
-    for (unsigned mask = 0; mask <= 15; ++mask) {
-      std::wstring_view value(&L"0123456789abcdef"[mask], 1);
-      if (sound::IconPlaces(value, 15, 0) != mask)
-        return 8;
-    }
-    if (sound::IconPlaces(L"f", 3, 2) != 2 || sound::IconPlaces(L"", 1, 1) != 1)
+    using IconSwitch = bool native::ModSettings::*;
+    const std::pair<std::wstring_view, IconSwitch> iconSwitches[] = {
+        {L"alternativeIcons.mixer.quick", &native::ModSettings::altQuickMixer},
+        {L"alternativeIcons.mixer.sound", &native::ModSettings::altSoundMixer},
+        {L"alternativeIcons.volume.taskbar", &native::ModSettings::altTrayVolume},
+        {L"alternativeIcons.volume.quick", &native::ModSettings::altQuickVolume},
+        {L"alternativeIcons.volume.sound", &native::ModSettings::altSoundVolume},
+        {L"alternativeIcons.volume.apps", &native::ModSettings::altAppUnmute},
+        {L"alternativeIcons.ethernet.taskbar", &native::ModSettings::altTrayEthernet},
+        {L"alternativeIcons.gear.sound", &native::ModSettings::altSoundGear},
+    };
+    native::ModSettings icons;
+    native::ReadAlternativeIcons(icons, [](PCWSTR) { return 1; });
+    if (icons != native::ModSettings{}) {
+      std::puts("FAIL: Alternative icons are disabled with Windhawk's default integer values");
       return 8;
-    std::puts("PASS: Icon placement combinations and fallback");
+    }
+    for (auto const &[key, member] : iconSwitches) {
+      native::ModSettings expected;
+      expected.*member = false;
+      native::ReadAlternativeIcons(icons, [key](PCWSTR name) {
+        return std::wstring_view(name) == key ? 0 : 1;
+      });
+      if (icons != expected) {
+        std::puts("FAIL: An alternative icon switch did not control its own location");
+        return 8;
+      }
+    }
+    std::puts("PASS: Integer icon switches preserve defaults and toggle locations independently");
     if (sound::VolumeIcon(.5f, true) != -1 || sound::VolumeIcon(0.f, false) != 0 ||
         sound::VolumeIcon(.1f, false) != 1 || sound::VolumeIcon(.5f, false) != 2 ||
         sound::VolumeIcon(1.f, false) != 3) {

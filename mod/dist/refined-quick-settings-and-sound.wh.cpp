@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.6.4
+// @version 0.6.5
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -818,15 +818,6 @@ struct WheelVolume {
     return std::clamp(target, minimum, maximum);
   }
 };
-// The options contain the selected places in the order listed in the settings.
-inline unsigned IconPlaces(std::wstring_view value, unsigned supported, unsigned defaults) {
-  if (value.size() != 1)
-    return defaults;
-  auto digit = value.front();
-  unsigned mask = digit >= L'0' && digit <= L'9' ? digit - L'0'
-                : digit >= L'a' && digit <= L'f' ? digit - L'a' + 10 : supported + 1;
-  return mask <= supported ? mask : defaults;
-}
 inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const &name,
                    std::wstring const &path) {
   auto text = Lower(name + L" " + path);
@@ -1446,6 +1437,16 @@ struct ModSettings {
        altAppUnmute = true, altSoundGear = true;
   bool operator==(ModSettings const &) const = default;
 };
+inline void ReadAlternativeIcons(ModSettings &settings, auto readInt) {
+  settings.altQuickMixer = readInt(L"alternativeIcons.mixer.quick") != 0;
+  settings.altSoundMixer = readInt(L"alternativeIcons.mixer.sound") != 0;
+  settings.altTrayVolume = readInt(L"alternativeIcons.volume.taskbar") != 0;
+  settings.altQuickVolume = readInt(L"alternativeIcons.volume.quick") != 0;
+  settings.altSoundVolume = readInt(L"alternativeIcons.volume.sound") != 0;
+  settings.altAppUnmute = readInt(L"alternativeIcons.volume.apps") != 0;
+  settings.altTrayEthernet = readInt(L"alternativeIcons.ethernet.taskbar") != 0;
+  settings.altSoundGear = readInt(L"alternativeIcons.gear.sound") != 0;
+}
 inline std::mutex settingsMutex;
 inline ModSettings modSettings;
 inline ModSettings SettingsSnapshot() {
@@ -5652,12 +5653,46 @@ namespace native {
 // PaginatedGridView. Resolve its methods only for the image whose ABI was checked.
 using SetQuickRows = void(WINAPI *)(void *, int);
 using UpdateQuickExtent = void(WINAPI *)(void *);
-inline SetQuickRows setQuickRows = nullptr, originalSetQuickRows = nullptr;
+inline SetQuickRows originalSetQuickRows = nullptr;
 inline UpdateQuickExtent updateQuickExtent = nullptr;
 inline void *quickGridVtable = nullptr;
-inline void WINAPI KeepQuickRows(void *self, int rows) {
-  originalSetQuickRows(self, stopping ? rows : SettingsSnapshot().quickActionRows);
+struct QuickRowsOverride {
+  int nativeRows;
+  int configuredRows;
+};
+inline std::mutex quickRowsMutex;
+inline std::map<void *, QuickRowsOverride> quickRowsOverrides;
+inline bool TrackQuickRows(void *self, int nativeRows, int configuredRows) {
+  std::lock_guard lock(quickRowsMutex);
+  return quickRowsOverrides.try_emplace(self, QuickRowsOverride{nativeRows, configuredRows}).second;
+}
+inline void RestoreQuickRows(void *self) {
+  int nativeRows;
+  {
+    std::lock_guard lock(quickRowsMutex);
+    auto saved = quickRowsOverrides.extract(self);
+    if (!saved)
+      return;
+    nativeRows = saved.mapped().nativeRows;
+  }
+  originalSetQuickRows(self, nativeRows);
   updateQuickExtent(self);
+}
+inline void WINAPI KeepQuickRows(void *self, int rows) {
+  int effectiveRows = rows;
+  bool overrideRows = false;
+  {
+    std::lock_guard lock(quickRowsMutex);
+    if (auto it = quickRowsOverrides.find(self); it != quickRowsOverrides.end()) {
+      it->second.nativeRows = rows;
+      overrideRows = !stopping;
+      if (overrideRows)
+        effectiveRows = it->second.configuredRows;
+    }
+  }
+  originalSetQuickRows(self, effectiveRows);
+  if (overrideRows)
+    updateQuickExtent(self);
 }
 inline void HookQuickRows(HMODULE dll) {
   auto image = reinterpret_cast<BYTE *>(dll);
@@ -5675,8 +5710,8 @@ inline void HookQuickRows(HMODULE dll) {
     return;
   updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(image + 0x2944d0);
   quickGridVtable = image + 0x37f518;
-  if (WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows))
-    setQuickRows = setter;
+  if (!WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows))
+    originalSetQuickRows = nullptr;
 }
 // Quick Settings main page (ControlCenter.ControlCenterView). L1Grid holds a
 // light Border spanning TogglesGroup + SlidersGroup, then FooterGrid
@@ -6783,7 +6818,7 @@ class QuickPage {
         pip(selectedPip_, 1., selectedPx / pipScale));
   }
   void TileRows(C::Grid const &l1) {
-    if (!setQuickRows)
+    if (!originalSetQuickRows)
       return;
     auto paginated = Find(Named(l1, L"TogglesGroup"), [](auto const &e) {
       return Class(e) == L"ControlCenter.PaginatedGridView";
@@ -6801,22 +6836,28 @@ class QuickPage {
       return;
     int rows = *reinterpret_cast<int const *>(self + 0xa8);
     auto grid = Named(paginated, L"RootGridView").try_as<C::GridView>();
-    if (!grid)
+    if (!grid || (rows != 1 && rows != 2))
       return;
-    // Native layouts use one or two rows depending on available height.
-    int nativeRows = rows == 1 ? 1 : 2;
+    // Until this grid is tracked, native calls leave the row count untouched.
+    if (!TrackQuickRows(self, rows, settings_.quickActionRows))
+      return;
+    try {
+      journal_.undo.push_back([iface] {
+        RestoreQuickRows(reinterpret_cast<BYTE *>(iface.get()) - 0x10);
+      });
+    } catch (...) {
+      RestoreQuickRows(self);
+      throw;
+    }
+    tiledView_ = winrt::make_weak(paginated);
     if (auto pager = Named(view_, L"QuickActionsPager").try_as<U::PipsPager>();
         pager && rows != settings_.quickActionRows && pager.SelectedPageIndex() > 0)
       pager.SelectedPageIndex(0);
-    setQuickRows(self, settings_.quickActionRows);
-    tiledView_ = winrt::make_weak(paginated);
+    // The mod's own write must bypass KeepQuickRows.
+    originalSetQuickRows(self, settings_.quickActionRows);
+    updateQuickExtent(self);
     Wh_Log(L"Quick Settings pagination set to %d rows, %u tiles", settings_.quickActionRows,
            grid.Items().Size());
-    journal_.undo.push_back([iface, nativeRows] {
-      auto self = reinterpret_cast<BYTE *>(iface.get()) - 0x10;
-      originalSetQuickRows(self, nativeRows);
-      updateQuickExtent(self);
-    });
   }
   // Mute button of the volume row: a button of the mod's own in the same Grid
   // cell, with the system QA_Volume asset driven by Core Audio and the slider.
@@ -9672,30 +9713,7 @@ inline ModSettings ReadSettings() {
     settings.quickActionRows = rowCount.front() - L'0';
   using S = sound::QuickShortcut;
   auto first = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut1");
-  const auto oldIcon = [&](PCWSTR key) { return !*first.get() || Wh_GetIntSetting(key) != 0; };
-  const auto icon = [](PCWSTR key, bool fallback) {
-    auto value = WindhawkUtils::StringSetting::make(key);
-    return *value.get() ? std::wstring_view(value.get()) == L"1" : fallback;
-  };
-  auto mixer = WindhawkUtils::StringSetting::make(L"alternativeIcons.mixerPlaces");
-  auto volume = WindhawkUtils::StringSetting::make(L"alternativeIcons.volumePlaces");
-  auto ethernet = WindhawkUtils::StringSetting::make(L"alternativeIcons.ethernetPlaces");
-  auto gear = WindhawkUtils::StringSetting::make(L"alternativeIcons.gearPlaces");
-  unsigned mixerPlaces = sound::IconPlaces(mixer.get(), 3,
-      oldIcon(L"alternativeIcons.quickMixer") | (oldIcon(L"alternativeIcons.soundMixer") << 1));
-  unsigned volumePlaces = sound::IconPlaces(volume.get(), 15,
-      oldIcon(L"alternativeIcons.trayVolume") | (oldIcon(L"alternativeIcons.quickVolume") << 1) |
-      (oldIcon(L"alternativeIcons.soundVolume") << 2) | (oldIcon(L"alternativeIcons.appUnmute") << 3));
-  settings.altQuickMixer = icon(L"alternativeIcons.mixer.quick", mixerPlaces & 1);
-  settings.altSoundMixer = icon(L"alternativeIcons.mixer.sound", mixerPlaces & 2);
-  settings.altTrayVolume = icon(L"alternativeIcons.volume.taskbar", volumePlaces & 1);
-  settings.altQuickVolume = icon(L"alternativeIcons.volume.quick", volumePlaces & 2);
-  settings.altSoundVolume = icon(L"alternativeIcons.volume.sound", volumePlaces & 4);
-  settings.altAppUnmute = icon(L"alternativeIcons.volume.apps", volumePlaces & 8);
-  settings.altTrayEthernet = icon(
-      L"alternativeIcons.ethernet.taskbar",
-      sound::IconPlaces(ethernet.get(), 1, oldIcon(L"alternativeIcons.trayEthernet")));
-  settings.altSoundGear = icon(L"alternativeIcons.gear.sound", sound::IconPlaces(gear.get(), 1, 1));
+  ReadAlternativeIcons(settings, Wh_GetIntSetting);
   if (*first.get()) {
     for (int i = 0; i < int(settings.quickShortcuts.size()); ++i) {
       auto slot = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut%d", i + 1);

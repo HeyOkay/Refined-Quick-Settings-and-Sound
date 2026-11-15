@@ -52,6 +52,16 @@ struct ModSettings {
        altAppUnmute = true, altSoundGear = true;
   bool operator==(ModSettings const &) const = default;
 };
+inline void ReadAlternativeIcons(ModSettings &settings, auto readInt) {
+  settings.altQuickMixer = readInt(L"alternativeIcons.mixer.quick") != 0;
+  settings.altSoundMixer = readInt(L"alternativeIcons.mixer.sound") != 0;
+  settings.altTrayVolume = readInt(L"alternativeIcons.volume.taskbar") != 0;
+  settings.altQuickVolume = readInt(L"alternativeIcons.volume.quick") != 0;
+  settings.altSoundVolume = readInt(L"alternativeIcons.volume.sound") != 0;
+  settings.altAppUnmute = readInt(L"alternativeIcons.volume.apps") != 0;
+  settings.altTrayEthernet = readInt(L"alternativeIcons.ethernet.taskbar") != 0;
+  settings.altSoundGear = readInt(L"alternativeIcons.gear.sound") != 0;
+}
 inline std::mutex settingsMutex;
 inline ModSettings modSettings;
 inline ModSettings SettingsSnapshot() {

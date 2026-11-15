@@ -88,15 +88,6 @@ struct WheelVolume {
     return std::clamp(target, minimum, maximum);
   }
 };
-// The options contain the selected places in the order listed in the settings.
-inline unsigned IconPlaces(std::wstring_view value, unsigned supported, unsigned defaults) {
-  if (value.size() != 1)
-    return defaults;
-  auto digit = value.front();
-  unsigned mask = digit >= L'0' && digit <= L'9' ? digit - L'0'
-                : digit >= L'a' && digit <= L'f' ? digit - L'a' + 10 : supported + 1;
-  return mask <= supported ? mask : defaults;
-}
 inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const &name,
                    std::wstring const &path) {
   auto text = Lower(name + L" " + path);
