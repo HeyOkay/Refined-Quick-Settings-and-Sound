@@ -72,6 +72,76 @@ struct Model : winrt::implements<Model, native::D::ICustomPropertyProvider> {
 };
 int main() {
   try {
+    auto soundRequest = native::SoundRequestToken(0xfffffff0, 1);
+    if (soundRequest == native::SoundRequestToken(0xfffffff0, 2) ||
+        native::SoundEventMatchesRequest(soundRequest, 0xffffffef) ||
+        !native::SoundEventMatchesRequest(soundRequest, 0xfffffff0) ||
+        !native::SoundEventMatchesRequest(soundRequest, 1)) {
+      std::puts("FAIL: Sound request ignores earlier shell events across tick wraparound");
+      return 9;
+    }
+    std::puts("PASS: Sound request tokens distinguish taps and reject stale shell events");
+    using Shortcut = sound::QuickShortcut;
+    auto buttons = sound::QuickShortcuts(
+        {Shortcut::Display, Shortcut::None, Shortcut::Display, Shortcut::Power, Shortcut::Power},
+        false);
+    auto withoutDisplay = sound::QuickShortcuts(
+        {Shortcut::Display, Shortcut::Network, Shortcut::NetworkSettings, Shortcut::None,
+         Shortcut::Bluetooth}, true);
+    auto empty = sound::QuickShortcuts(
+        {Shortcut::Display, Shortcut::Display, sound::ParseQuickShortcut(L"night")}, true);
+    auto added = sound::QuickShortcuts(
+        {sound::ParseQuickShortcut(L"notifications"), sound::ParseQuickShortcut(L"graphics"),
+         sound::ParseQuickShortcut(L"networkSettings"), sound::ParseQuickShortcut(L"power"),
+         sound::ParseQuickShortcut(L"update")}, false);
+    if (buttons != std::vector{Shortcut::Display, Shortcut::Power} ||
+        withoutDisplay != std::vector{Shortcut::Network, Shortcut::NetworkSettings,
+                                      Shortcut::Bluetooth} ||
+        !empty.empty() ||
+        added != std::vector{Shortcut::Notifications, Shortcut::Graphics, Shortcut::NetworkSettings,
+                             Shortcut::Power, Shortcut::Update} ||
+        sound::ParseQuickShortcut(L"apps") != Shortcut::Apps ||
+        sound::ParseQuickShortcut(L"unknown") != Shortcut::None) {
+      std::puts("FAIL: Quick Settings shortcut order and visibility");
+      return 5;
+    }
+    std::puts("PASS: Quick Settings shortcuts skip gaps, duplicates and visible slider commands");
+    sound::WheelVolume wheel;
+    if (sound::VolumeWheelStep(0) != 2 || sound::VolumeWheelStep(7) != 7 ||
+        wheel.Next(50, 0, 100, 120, 2) != 52 ||
+        wheel.Next(99, 0, 100, 240, 7) != 100 ||
+        wheel.Next(50, 0, 100, 30, 2) != 50 ||
+        wheel.Next(50, 0, 100, 30, 2) != 51 ||
+        wheel.Next(51, 0, 100, -120, 2) != 49) {
+      std::puts("FAIL: Volume wheel defaults, bounds and partial detents");
+      return 6;
+    }
+    std::vector<std::wstring> names;
+    sound::AddHiddenApp(names, L"  Foo, Inc. ");
+    sound::AddHiddenApp(names, L" ");
+    sound::AddHiddenApp(names, L"STEAM.exe");
+    if (names != std::vector<std::wstring>{L"foo, inc.", L"steam.exe"} ||
+        sound::ParseHidden(L"FOO; Steam.exe, Slack") !=
+            std::vector<std::wstring>{L"foo", L"steam.exe", L"slack"}) {
+      std::puts("FAIL: Hidden app rows keep punctuation and legacy groups still split");
+      return 7;
+    }
+    std::puts("PASS: Volume wheel and hidden app setting behavior");
+    for (unsigned mask = 0; mask <= 15; ++mask) {
+      std::wstring_view value(&L"0123456789abcdef"[mask], 1);
+      if (sound::IconPlaces(value, 15, 0) != mask)
+        return 8;
+    }
+    if (sound::IconPlaces(L"f", 3, 2) != 2 || sound::IconPlaces(L"", 1, 1) != 1)
+      return 8;
+    std::puts("PASS: Icon placement combinations and fallback");
+    if (sound::VolumeIcon(.5f, true) != -1 || sound::VolumeIcon(0.f, false) != 0 ||
+        sound::VolumeIcon(.1f, false) != 1 || sound::VolumeIcon(.5f, false) != 2 ||
+        sound::VolumeIcon(1.f, false) != 3) {
+      std::puts("FAIL: Speaker glyph states distinguish zero volume from mute");
+      return 9;
+    }
+    std::puts("PASS: Speaker glyph states distinguish zero volume from mute");
     winrt::init_apartment();
     for (auto kind : {F::PropertyType::Int32, F::PropertyType::UInt32, F::PropertyType::Single,
                       F::PropertyType::Double}) {

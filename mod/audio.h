@@ -182,7 +182,7 @@ class Audio final {
   static std::wstring Friendly(IMMDevice *device) {
     winrt::com_ptr<IPropertyStore> props;
     PROPVARIANT value{};
-    std::wstring name = L"Audio device";
+    std::wstring name = Text(L"Audio device", L"Аудиоустройство", L"Dispositivo de audio", L"Audiogerät", L"Dispositivo de áudio", L"音频设备");
     constexpr PROPERTYKEY friendlyKey = {
         {0xa45c254e, 0xdf1c, 0x4efd, {0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0}}, 14};
     if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, props.put())) &&
@@ -193,10 +193,15 @@ class Audio final {
     }
     return name;
   }
-  std::vector<Device> Devices(EDataFlow flow, std::wstring &defaultId) {
+  std::wstring DefaultDevice(EDataFlow flow) {
     winrt::com_ptr<IMMDevice> current;
-    enumerator_->GetDefaultAudioEndpoint(flow, eMultimedia, current.put());
-    defaultId = Id(current.get());
+    auto result = enumerator_->GetDefaultAudioEndpoint(flow, eMultimedia, current.put());
+    if (result == HRESULT_FROM_WIN32(ERROR_NOT_FOUND))
+      return {};
+    winrt::check_hresult(result);
+    return Id(current.get());
+  }
+  std::vector<Device> Devices(EDataFlow flow, std::wstring const &defaultId) {
     std::vector<Device> result;
     winrt::com_ptr<IMMDeviceCollection> devices;
     winrt::check_hresult(enumerator_->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, devices.put()));
@@ -285,7 +290,13 @@ class Audio final {
   void Execute(Command const &cmd) {
     error_.clear();
     auto value = Clamp(cmd.value);
-    if (cmd.action == Action::MasterVolume || cmd.action == Action::MasterMute) {
+    if (cmd.action == Action::ToggleEndpointMute) {
+      if (!master_)
+        throw winrt::hresult_error(E_NOTFOUND, L"Output device unavailable");
+      BOOL muted = FALSE;
+      winrt::check_hresult(master_->GetMute(&muted));
+      winrt::check_hresult(master_->SetMute(!muted, nullptr));
+    } else if (cmd.action == Action::MasterVolume || cmd.action == Action::MasterMute) {
       if (!master_)
         throw winrt::hresult_error(E_NOTFOUND, L"Output device unavailable");
       float before = 0;
@@ -313,13 +324,12 @@ class Audio final {
       SetDefault(cmd.id);
     }
   }
-  void Read() {
+  bool Read() {
     Snapshot state;
     state.revision = ++revision_;
     state.applied = applied_;
     state.error = error_;
-    state.output = Devices(eRender, state.outputId);
-    state.input = Devices(eCapture, state.inputId);
+    state.outputId = DefaultDevice(eRender);
     BindMaster(state.outputId);
     if (master_) {
       BOOL mute = FALSE;
@@ -334,8 +344,31 @@ class Audio final {
           master_->UnregisterControlChangeNotify(volumeObserver_.get());
         volumeObserver_ = nullptr;
         master_ = nullptr;
+        std::lock_guard lock(volumeFeed_->mutex);
+        volumeFeed_->available = false;
       }
     }
+    bool retry = !state.outputId.empty() && !state.masterAvailable;
+    // The input list and the endpoint volume have independent failure modes.
+    // Publish the current volume even if an endpoint collection is unavailable.
+    for (auto flow : {eRender, eCapture})
+      try {
+        if (flow == eRender)
+          state.output = Devices(flow, state.outputId);
+        else {
+          state.inputId = DefaultDevice(flow);
+          state.input = Devices(flow, state.inputId);
+        }
+      } catch (winrt::hresult_error const &) {
+        retry = true;
+        std::lock_guard lock(mutex_);
+        if (flow == eRender && snapshot_.outputId == state.outputId)
+          state.output = snapshot_.output;
+        else if (flow == eCapture) {
+          state.inputId = snapshot_.inputId;
+          state.input = snapshot_.input;
+        }
+      }
     // The shell's own lists serve output devices, application sessions and
     // spatial sound; this worker serves the added input selector, the master
     // volume and the tray.
@@ -345,6 +378,7 @@ class Audio final {
     }
     if (publish_)
       publish_();
+    return retry;
   }
   void Run() noexcept {
     bool apartment = false;
@@ -372,8 +406,9 @@ class Audio final {
           }
           applied_ = cmd.serial;
         }
+        bool retry = true;
         try {
-          Read();
+          retry = Read();
         } catch (winrt::hresult_error const &ex) {
           {
             std::lock_guard lock(mutex_);
@@ -385,9 +420,13 @@ class Audio final {
             publish_();
         }
         std::unique_lock lock(wake_->mutex);
-        // No polling: endpoint, default-device and master volume changes arrive
-        // as notifications (Notify, VolumeNotify), commands through Send.
-        wake_->cv.wait(lock, [&] { return stop_ || wake_->changed; });
+        auto signalled = [&] { return stop_ || wake_->changed; };
+        // Failed reads and endpoint activation may have no notification to
+        // wake the worker again. Retry only until the audio state recovers.
+        if (retry)
+          wake_->cv.wait_for(lock, std::chrono::seconds(1), signalled);
+        else
+          wake_->cv.wait(lock, signalled);
         wake_->changed = false;
       }
       enumerator_->UnregisterEndpointNotificationCallback(observer.get());

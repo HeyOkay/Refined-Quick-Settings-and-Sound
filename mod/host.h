@@ -85,6 +85,8 @@ inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   };
   bool ok = WindhawkUtils::HookSymbols(controlCenter, controlCenterDllHooks,
                                        ARRAYSIZE(controlCenterDllHooks));
+  if (ok)
+    HookQuickRows(controlCenter);
   if (ok && applyNow)
     ok = Wh_ApplyHookOperations();
   discoveryState = ok ? 2 : 3;

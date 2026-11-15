@@ -161,6 +161,26 @@ inline X::XamlRoot Root(HWND taskbar) {
     decref(shared[1]);
   return root;
 }
+struct SoundTap {
+  HWND taskbar;
+  HMONITOR monitor;
+  UINT_PTR token;
+  void *self;
+  X::FrameworkElement icon;
+  IInspectable sender;
+  X::Input::TappedRoutedEventArgs args;
+  bool handled;
+  HWND foreground;
+};
+[[clang::no_destroy]] inline thread_local std::optional<SoundTap> soundTap;
+inline std::atomic<UINT_PTR> nextSoundTap{0};
+inline void CancelSoundTap() {
+  if (!soundTap)
+    return;
+  KillTimer(soundTap->taskbar, soundTap->token);
+  RemovePropW(soundTap->taskbar, soundRequestProperty);
+  soundTap.reset();
+}
 struct Record {
   DWORD thread = 0;
   HWND taskbar = nullptr;
@@ -170,6 +190,9 @@ struct Record {
   X::FrameworkElement visual{nullptr};
   X::DispatcherTimer timer{nullptr};
   winrt::event_token loaded{}, tick{};
+  IInspectable middleGesture{nullptr};
+  bool suppressMiddleTap = false;
+  ULONGLONG middleReleasedAt = 0;
   Journal glyphJournal;
   std::shared_ptr<AnimatedVolume> animated;
   unsigned redrawn = 0;
@@ -181,6 +204,15 @@ struct Record {
   bool networkSeen = false; // kind: 1 volume, 2 wired network
 };
 [[clang::no_destroy]] inline std::vector<std::shared_ptr<Record>> records;
+struct MenuEntry {
+  DWORD thread;
+  winrt::Windows::UI::Core::CoreDispatcher dispatcher;
+  winrt::weak_ref<C::MenuFlyout> menu;
+  winrt::weak_ref<C::MenuFlyoutItem> item;
+  winrt::weak_ref<C::MenuFlyoutSeparator> separator;
+  winrt::event_token click;
+};
+[[clang::no_destroy]] inline std::vector<MenuEntry> menuEntries;
 inline bool VolumeLeaf(X::DependencyObject const &node) {
   winrt::hstring value;
   if (auto text = node.try_as<C::TextBlock>())
@@ -328,6 +360,183 @@ inline bool InControlCenter(X::FrameworkElement element) {
   }
   return false;
 }
+inline void AttachMiddleMute(std::shared_ptr<Record> const &record, X::FrameworkElement const &icon) {
+  std::weak_ptr<Record> weak = record;
+  auto handler = winrt::box_value(X::Input::PointerEventHandler(
+      [weak](IInspectable const &sender, X::Input::PointerRoutedEventArgs const &args) {
+        try {
+          auto record = weak.lock();
+          if (!record || stopping || !SettingsSnapshot().trayMiddleClickMute)
+            return;
+          auto element = sender.as<X::FrameworkElement>();
+          auto point = args.GetCurrentPoint(element);
+          using Kind = winrt::Windows::UI::Input::PointerUpdateKind;
+          auto kind = point.Properties().PointerUpdateKind();
+          if (kind == Kind::LeftButtonPressed || kind == Kind::RightButtonPressed) {
+            record->suppressMiddleTap = false;
+          } else if (kind == Kind::MiddleButtonPressed &&
+                     Find(element, [](auto const &node) { return VolumeLeaf(node); })) {
+            record->suppressMiddleTap = true;
+            record->middleReleasedAt = 0;
+            args.Handled(true);
+            if (audio && audio->Get().masterAvailable)
+              audio->Send({sound::Action::ToggleEndpointMute});
+          } else if (kind == Kind::MiddleButtonReleased && record->suppressMiddleTap) {
+            record->middleReleasedAt = GetTickCount64();
+            args.Handled(true);
+          }
+        } catch (...) {
+          Wh_Log(L"TrayMiddleMuteError %08X", winrt::to_hresult());
+        }
+      }));
+  icon.AddHandler(X::UIElement::PointerPressedEvent(), handler, true);
+  try {
+    icon.AddHandler(X::UIElement::PointerReleasedEvent(), handler, true);
+  } catch (...) {
+    icon.RemoveHandler(X::UIElement::PointerPressedEvent(), handler);
+    throw;
+  }
+  record->middleGesture = handler;
+}
+inline bool ConsumeMiddleTap(X::FrameworkElement const &icon) {
+  std::lock_guard lock(recordsMutex);
+  for (auto const &record : records)
+    if (record->thread == GetCurrentThreadId() && record->suppressMiddleTap &&
+        record->icon.get() == icon) {
+      record->suppressMiddleTap = false;
+      // If XAML didn't emit a tap for the middle release, discard the old
+      // gesture before a later activation (for example from the keyboard).
+      return !record->middleReleasedAt || GetTickCount64() - record->middleReleasedAt < 500;
+    }
+  return false;
+}
+inline void AppendTrayMenuEntry(C::MenuFlyout const &menu, bool soundMenu) {
+  PCWSTR name = soundMenu ? L"RefinedSoundControlPanel" : L"RefinedDeviceManager";
+  auto items = menu.Items();
+  for (auto const &entry : items)
+    if (entry.Name() == name)
+      return;
+  C::MenuFlyoutItem item;
+  item.Name(name);
+  item.Text(soundMenu
+                ? sound::Text(L"More sound settings", L"Дополнительные параметры звука",
+                             L"Más opciones de configuración de sonido", L"Weitere Soundeinstellungen",
+                             L"Mais configurações de som", L"更多声音设置")
+                : sound::Text(L"Device Manager", L"Диспетчер устройств",
+                             L"Administrador de dispositivos", L"Geräte-Manager",
+                             L"Gerenciador de Dispositivos", L"设备管理器"));
+  C::FontIcon icon;
+  icon.FontFamily(M::FontFamily(L"Segoe Fluent Icons"));
+  icon.Glyph(soundMenu ? L"\ue767" : L"\ue772");
+  item.Icon(icon);
+  C::MenuFlyoutSeparator separator{nullptr};
+  if (items.Size() && !items.GetAt(items.Size() - 1).try_as<C::MenuFlyoutSeparator>())
+    separator = C::MenuFlyoutSeparator();
+  MenuEntry entry{GetCurrentThreadId(), item.Dispatcher(), winrt::make_weak(menu),
+                  winrt::make_weak(item), winrt::make_weak(separator), {}};
+  entry.click = item.Click([soundMenu](auto &&, auto &&) {
+    ShellExecuteW(nullptr, L"open", soundMenu ? L"control.exe" : L"devmgmt.msc",
+                  soundMenu ? L"mmsys.cpl" : nullptr, nullptr, SW_SHOWNORMAL);
+  });
+  try {
+    std::lock_guard lock(recordsMutex);
+    std::erase_if(menuEntries, [&](auto const &e) {
+      return e.thread == entry.thread && !e.item.get() && !e.separator.get();
+    });
+    menuEntries.push_back(entry);
+  } catch (...) {
+    item.Click(entry.click);
+    throw;
+  }
+  try {
+    if (separator)
+      items.Append(separator);
+    items.Append(item);
+  } catch (...) {
+    uint32_t index;
+    if (separator && items.IndexOf(separator, index))
+      items.RemoveAt(index);
+    throw;
+  }
+}
+inline std::wstring TrayString(PCWSTR key) {
+  WCHAR file[MAX_PATH]{};
+  auto module = GetModuleHandleW(L"SystemTray.dll");
+  if (!module || !GetModuleFileNameW(module, file, ARRAYSIZE(file)) ||
+      !PathRemoveFileSpecW(file))
+    return {};
+  auto uri = std::wstring(L"@{") + file +
+             L"\\resources.pri?ms-resource://MicrosoftWindows.Client.Core/SystemTray/Resources/" +
+             key + L"}";
+  WCHAR value[256]{};
+  if (FAILED(SHLoadIndirectString(uri.c_str(), value, ARRAYSIZE(value), nullptr)))
+    return {};
+  return value;
+}
+inline bool TrayMenuHas(C::MenuFlyout const &menu, PCWSTR key) {
+  auto text = TrayString(key);
+  if (!text.empty())
+    for (auto const &entry : menu.Items())
+      if (auto item = entry.try_as<C::MenuFlyoutItem>(); item && item.Text() == text)
+        return true;
+  return false;
+}
+inline void ExtendTrayMenu(void *self) {
+  if (stopping)
+    return;
+  try {
+    IInspectable flyout{nullptr};
+    winrt::copy_from_abi(flyout, self);
+    auto menu = flyout.try_as<C::MenuFlyout>();
+    if (!menu || !menu.Items().Size())
+      return;
+    auto windows = Taskbars();
+    if (std::none_of(windows.begin(), windows.end(), [](auto window) {
+          return GetWindowThreadProcessId(window, nullptr) == GetCurrentThreadId();
+        }))
+      return;
+    // ShowAt is shared by other tray flyouts. Match the native command labels.
+    if (TrayMenuHas(menu, L"VolumeContextMenuVolumeMixer") &&
+        TrayMenuHas(menu, L"VolumeContextMenuSoundSettings"))
+      AppendTrayMenuEntry(menu, true);
+    else if (TrayMenuHas(menu, L"NetworkContextMenuSettings") ||
+             TrayMenuHas(menu, L"BatteryContextMenuPowerSettings"))
+      AppendTrayMenuEntry(menu, false);
+  } catch (...) {
+    Wh_Log(L"TrayMenuError %08X", winrt::to_hresult());
+  }
+}
+using ShowFlyout = HRESULT(WINAPI *)(void *, void *);
+using ShowFlyoutWithOptions = HRESULT(WINAPI *)(void *, void *, void *);
+inline ShowFlyout originalShowFlyout = nullptr;
+inline ShowFlyoutWithOptions originalShowFlyoutWithOptions = nullptr;
+inline HRESULT WINAPI ShowTrayFlyout(void *self, void *target) {
+  ExtendTrayMenu(self);
+  return originalShowFlyout(self, target);
+}
+inline HRESULT WINAPI ShowTrayFlyoutWithOptions(void *self, void *target, void *options) {
+  ExtendTrayMenu(self);
+  return originalShowFlyoutWithOptions(self, target, options);
+}
+inline void HookTrayMenus() {
+  try {
+    C::MenuFlyout flyout;
+    auto base = flyout.as<P::IFlyoutBase>();
+    auto withOptions = flyout.as<P::IFlyoutBase5>();
+    // Slots from the stable Windows.UI.Xaml WinRT ABI (including IInspectable).
+    auto table = *reinterpret_cast<void ***>(winrt::get_abi(base));
+    auto table5 = *reinterpret_cast<void ***>(winrt::get_abi(withOptions));
+    bool basic = WindhawkUtils::SetFunctionHook(reinterpret_cast<ShowFlyout>(table[14]),
+                                               ShowTrayFlyout, &originalShowFlyout);
+    bool options = WindhawkUtils::SetFunctionHook(
+        reinterpret_cast<ShowFlyoutWithOptions>(table5[12]), ShowTrayFlyoutWithOptions,
+        &originalShowFlyoutWithOptions);
+    if (!(basic || options) || !Wh_ApplyHookOperations())
+      Wh_Log(L"Tray menu hook unavailable");
+  } catch (...) {
+    Wh_Log(L"TrayMenuHookError %08X", winrt::to_hresult());
+  }
+}
 inline void CopySlot(X::FrameworkElement const &to, X::FrameworkElement const &from) {
   to.HorizontalAlignment(from.HorizontalAlignment());
   to.VerticalAlignment(from.VerticalAlignment());
@@ -448,9 +657,21 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
       record->timer.Stop();
     return;
   }
+  auto settings = SettingsSnapshot();
+  if (!settings.trayMiddleClickMute)
+    record->suppressMiddleTap = false;
+  if (settings.trayMiddleClickMute && !record->middleGesture && InControlCenter(icon) &&
+      Find(icon, [](auto const &node) { return VolumeLeaf(node); }))
+    try {
+      AttachMiddleMute(record, icon);
+    } catch (...) {
+      Wh_Log(L"TrayVolumeActionsError %08X", winrt::to_hresult());
+    }
   if (record->attached) {
     auto native = record->native.get();
-    if (!native || !native.IsLoaded()) {
+    if (!native || !native.IsLoaded() ||
+        (record->kind == 1 && !settings.altTrayVolume) ||
+        (record->kind == 2 && !settings.altTrayEthernet)) {
       if (auto parent = record->parent.get(); parent && record->visual) {
         uint32_t index;
         if (parent.Children().IndexOf(record->visual, index))
@@ -476,8 +697,10 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
     // Use the outermost Grid within this IconView. The replacement must
     // remain outside every native glyph/template branch that we suppress.
     int kind = 1;
-    auto leaf = Find(icon, [](auto const &node) { return VolumeLeaf(node); });
-    if (!leaf) {
+    X::FrameworkElement leaf{nullptr};
+    if (settings.altTrayVolume)
+      leaf = Find(icon, [](auto const &node) { return VolumeLeaf(node); });
+    if (!leaf && settings.altTrayEthernet) {
       int wired = -1;
       leaf = Find(icon, [&wired](auto const &node) {
         int s = NetworkLeaf(node);
@@ -618,7 +841,22 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
 }
 inline std::mutex pulsesMutex;
 inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
+inline void RetrySoundTap();
 inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l, DWORD_PTR) {
+  if (message == soundShownMessage) {
+    if (soundTap && soundTap->taskbar == window && soundTap->token == w &&
+        reinterpret_cast<LPARAM>(soundTap->monitor) == l)
+      CancelSoundTap();
+    return 0;
+  }
+  if (message == WM_TIMER && soundTap && soundTap->taskbar == window && soundTap->token == w) {
+    try {
+      RetrySoundTap();
+    } catch (...) {
+      Wh_Log(L"Native Sound fallback: %08X", winrt::to_hresult());
+    }
+    return 0;
+  }
   if (message == volumePulseMessage) {
     {
       std::lock_guard lock(pulsesMutex);
@@ -649,6 +887,8 @@ inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l
     return 0;
   }
   if (message == WM_NCDESTROY) {
+    if (soundTap && soundTap->taskbar == window)
+      CancelSoundTap();
     {
       std::lock_guard lock(pulsesMutex);
       if (auto it = pulses.find(window); it != pulses.end()) {
@@ -660,16 +900,18 @@ inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l
   }
   return DefSubclassProc(window, message, w, l);
 }
-inline void EnsurePulse(HWND window) {
+inline bool EnsurePulse(HWND window) {
   {
     std::lock_guard lock(pulsesMutex);
     if (pulses.contains(window))
-      return;
+      return true;
   }
   if (WindhawkUtils::SetWindowSubclassFromAnyThread(window, VolumeProc, 0)) {
     std::lock_guard lock(pulsesMutex);
     pulses.emplace(window, std::make_shared<VolumePulse>(window));
+    return true;
   }
+  return false;
 }
 inline void VolumeChanged() {
   std::vector<std::shared_ptr<VolumePulse>> copy;
@@ -681,6 +923,24 @@ inline void VolumeChanged() {
   for (auto const &pulse : copy)
     pulse->Post();
 }
+inline void RefreshSettings() {
+  for (auto taskbar : Taskbars())
+    Dispatch(taskbar, [taskbar] {
+      std::vector<std::shared_ptr<Record>> local;
+      {
+        std::lock_guard lock(recordsMutex);
+        for (auto const &record : records)
+          if (record->taskbar == taskbar)
+            local.push_back(record);
+      }
+      for (auto const &record : local)
+        try {
+          Refresh(record);
+        } catch (...) {
+          Wh_Log(L"Tray settings refresh: %08X", winrt::to_hresult());
+        }
+    });
+}
 inline void Observe(X::FrameworkElement const &element, HWND taskbar) {
   if (!element || stopping)
     return;
@@ -688,7 +948,7 @@ inline void Observe(X::FrameworkElement const &element, HWND taskbar) {
   {
     std::lock_guard lock(recordsMutex);
     for (auto const &r : records)
-      if (auto current = r->icon.get(); current && current.as<IUnknown>() == element.as<IUnknown>())
+      if (r->thread == GetCurrentThreadId() && r->icon.get() == element)
         return;
   }
   auto record = std::make_shared<Record>();
@@ -775,11 +1035,15 @@ inline void *WINAPI Constructed(void *self) {
   }
   return result;
 }
-inline void OpenNativeSound() {
+inline bool OpenNativeSound() {
+  auto down = [](int code) { return (GetAsyncKeyState(code) & 0x8000) != 0; };
+  // The shell registers Win+Ctrl+V, including the absence of Alt and Shift.
+  // Let the original tap run if the user's keys would change that chord.
+  if (down(VK_MENU) || down(VK_SHIFT) || down('V'))
+    return false;
   INPUT input[6]{};
   UINT count = 0;
-  bool winHeld = (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0,
-       ctrlHeld = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+  bool winHeld = down(VK_LWIN) || down(VK_RWIN), ctrlHeld = down(VK_CONTROL);
   auto key = [&](WORD code, bool up) {
     input[count].type = INPUT_KEYBOARD;
     input[count].ki.wVk = code;
@@ -797,6 +1061,7 @@ inline void OpenNativeSound() {
     key(VK_LWIN, true);
   auto sent = SendInput(count, input, sizeof(INPUT));
   Wh_Log(L"Native Sound shortcut: %u/%u events", sent, count);
+  return sent == count;
 }
 // The native handler takes TappedRoutedEventArgs by value. In the MSVC ABI the
 // caller passes the address of a temporary and the callee destroys it; the
@@ -805,9 +1070,69 @@ inline void OpenNativeSound() {
 // releases the object.
 using NativeTapped = void(WINAPI *)(void *, IInspectable const &, void *);
 inline NativeTapped originalTapped = nullptr;
+inline bool SoundPageShown(HMONITOR monitor) {
+  for (HWND window = nullptr; (window = FindWindowExW(nullptr, window, nullptr, nullptr));)
+    if (GetPropW(window, soundPageProperty) == monitor && WindowShown(window) &&
+        MonitorFromWindow(window, MONITOR_DEFAULTTONULL) == monitor)
+      return true;
+  return false;
+}
+inline HWND SoundTaskbar(X::FrameworkElement const &icon, bool mouse) {
+  auto root = icon.XamlRoot();
+  POINT cursor{};
+  bool haveCursor = mouse && GetCursorPos(&cursor);
+  HWND only = nullptr, underCursor = nullptr;
+  bool multiple = false;
+  for (auto taskbar : Taskbars()) {
+    if (GetWindowThreadProcessId(taskbar, nullptr) != GetCurrentThreadId())
+      continue;
+    if (root && Root(taskbar) == root)
+      return taskbar;
+    RECT bounds{};
+    if (haveCursor && GetWindowRect(taskbar, &bounds) && PtInRect(&bounds, cursor))
+      underCursor = taskbar;
+    multiple |= only != nullptr;
+    only = taskbar;
+  }
+  return multiple ? underCursor : only;
+}
+inline bool AwaitSoundPage(SoundTap tap) {
+  if (!soundShownMessage || !EnsurePulse(tap.taskbar) ||
+      !SetPropW(tap.taskbar, soundRequestProperty, reinterpret_cast<HANDLE>(tap.token)))
+    return false;
+  soundTap.emplace(std::move(tap));
+  if (!SetTimer(soundTap->taskbar, soundTap->token, 1200, nullptr)) {
+    CancelSoundTap();
+    return false;
+  }
+  return true;
+}
+inline bool IsControlCenterWindow(HWND window) {
+  WCHAR name[48]{};
+  return GetClassNameW(window, name, ARRAYSIZE(name)) && !_wcsicmp(name, L"ControlCenterWindow");
+}
+inline void RetrySoundTap() {
+  auto tap = std::move(*soundTap);
+  CancelSoundTap();
+  auto foreground = GetForegroundWindow();
+  if (stopping || !SettingsSnapshot().quickSoundAccess || !tap.icon.IsLoaded() ||
+      MonitorFromWindow(tap.taskbar, MONITOR_DEFAULTTONULL) != tap.monitor ||
+      SoundPageShown(tap.monitor) ||
+      (foreground != tap.foreground && foreground != tap.taskbar &&
+       !IsControlCenterWindow(foreground)))
+    return;
+  tap.args.Handled(tap.handled);
+  // The projected icon keeps the native object alive until the replay. The
+  // original callee releases the reference in this ABI argument slot.
+  auto slot = winrt::detach_abi(tap.args);
+  Wh_Log(L"No Sound page confirmed on the target monitor; replaying the tray tap");
+  originalTapped(tap.self, tap.sender, &slot);
+}
 inline void WINAPI Tapped(void *self, IInspectable const &sender, void *argsSlot) {
   auto &args = *static_cast<X::Input::TappedRoutedEventArgs *>(argsSlot);
-  if (!stopping)
+  CancelSoundTap();
+  auto settings = SettingsSnapshot();
+  if (!stopping && (settings.quickSoundAccess || settings.trayMiddleClickMute))
     try {
       // Intercept the shell's own handler, before it activates Quick Settings.
       // A later UIElement.Tapped subscription cannot cancel an action already
@@ -818,25 +1143,39 @@ inline void WINAPI Tapped(void *self, IInspectable const &sender, void *argsSlot
         (*address)->QueryInterface(winrt::guid_of<X::FrameworkElement>(), winrt::put_abi(icon));
         if (icon && InControlCenter(icon) &&
             Find(icon, [](auto const &child) { return VolumeLeaf(child); })) {
-          args.Handled(true);
-          Wh_Log(L"Sound panel: native volume click intercepted");
-          OpenNativeSound();
-          try {
-            for (auto taskbar : Taskbars())
-              if (GetWindowThreadProcessId(taskbar, nullptr) == GetCurrentThreadId()) {
-                Observe(icon, taskbar);
-                break;
-              }
-          } catch (...) {
-            Wh_Log(L"Lazy volume icon styling failed; click was still handled");
+          bool mouse =
+              args.PointerDeviceType() == winrt::Windows::Devices::Input::PointerDeviceType::Mouse;
+          // Tapped is independent of the handled flag on the pointer events.
+          if (settings.trayMiddleClickMute && mouse && ConsumeMiddleTap(icon)) {
+            args.Handled(true);
+            Wh_Log(L"Tray middle click: suppressed the panel tap");
+            args = nullptr; // the callee's share of the by-value argument
+            return;
           }
-          args = nullptr; // the callee's share of the by-value argument
-          return;
+          if (settings.quickSoundAccess)
+            if (auto taskbar = SoundTaskbar(icon, mouse)) {
+              auto monitor = MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL);
+              auto token = SoundRequestToken(GetTickCount64(), ++nextSoundTap);
+              if (monitor && (SoundPageShown(monitor) ||
+                              AwaitSoundPage({taskbar, monitor, token, self, icon, sender,
+                                              args, args.Handled(), GetForegroundWindow()})) &&
+                  OpenNativeSound()) {
+                args.Handled(true);
+                args = nullptr; // the callee's share of the by-value argument
+                try {
+                  Observe(icon, taskbar);
+                } catch (...) {
+                  Wh_Log(L"Lazy volume icon styling failed; click was still handled");
+                }
+                return;
+              }
+            }
         }
       }
     } catch (winrt::hresult_error const &error) {
       Wh_Log(L"Native volume handler: 0x%08X", error.code().value);
     }
+  CancelSoundTap();
   originalTapped(self, sender, argsSlot);
 }
 inline bool HookTray(HMODULE module) {
@@ -907,12 +1246,18 @@ inline bool Initialize(HINSTANCE instance) {
   return result;
 }
 inline void AttachExisting() {
+  bool menuHooked = false;
   for (auto taskbar : Taskbars())
-    Dispatch(taskbar, [taskbar] {
+    Dispatch(taskbar, [taskbar, &menuHooked] {
       EnsurePulse(taskbar);
       auto root = Root(taskbar);
-      if (root)
+      if (root) {
         Walk(root.Content(), taskbar);
+        if (!menuHooked) {
+          HookTrayMenus();
+          menuHooked = true;
+        }
+      }
     });
   size_t attached = 0;
   {
@@ -926,13 +1271,37 @@ inline void AttachExisting() {
 // All XAML cleanup and the final Record destruction stay on the owner thread.
 // Leave a record in the no_destroy vector if cleanup fails partway through.
 inline void CleanupThreadRecords() {
+  CancelSoundTap();
   std::vector<std::shared_ptr<Record>> local;
+  std::vector<MenuEntry> menus;
   {
     std::lock_guard lock(recordsMutex);
     for (auto const &record : records)
       if (record->thread == GetCurrentThreadId())
         local.push_back(record);
+    std::erase_if(menuEntries, [&](auto &entry) {
+      if (entry.thread != GetCurrentThreadId())
+        return false;
+      menus.push_back(std::move(entry));
+      return true;
+    });
   }
+  for (auto const &entry : menus)
+    try {
+      auto item = entry.item.get();
+      if (item)
+        item.Click(entry.click);
+      if (auto menu = entry.menu.get()) {
+        uint32_t index;
+        auto items = menu.Items();
+        if (item && items.IndexOf(item, index))
+          items.RemoveAt(index);
+        if (auto separator = entry.separator.get(); separator && items.IndexOf(separator, index))
+          items.RemoveAt(index);
+      }
+    } catch (...) {
+      Wh_Log(L"Tray menu cleanup on UI thread %u: %08X", entry.thread, winrt::to_hresult());
+    }
   for (auto const &record : local)
     try {
       if (record->timer) {
@@ -940,10 +1309,17 @@ inline void CleanupThreadRecords() {
         record->timer.Tick(record->tick);
         record->timer = nullptr;
       }
-      if (auto icon = record->icon.get(); icon && record->loaded.value) {
-        icon.Loaded(record->loaded);
-        record->loaded = {};
+      if (auto icon = record->icon.get()) {
+        if (record->loaded.value) {
+          icon.Loaded(record->loaded);
+          record->loaded = {};
+        }
+        if (record->middleGesture) {
+          icon.RemoveHandler(X::UIElement::PointerPressedEvent(), record->middleGesture);
+          icon.RemoveHandler(X::UIElement::PointerReleasedEvent(), record->middleGesture);
+        }
       }
+      record->middleGesture = nullptr;
       RestoreGlyphs(record);
       RemoveVisual(record);
       record->animated.reset();
@@ -997,6 +1373,8 @@ inline void Shutdown() {
     std::lock_guard lock(recordsMutex);
     for (auto const &record : records)
       remaining.try_emplace(record->thread, record->dispatcher);
+    for (auto const &entry : menuEntries)
+      remaining.try_emplace(entry.thread, entry.dispatcher);
   }
   for (auto const &[thread, dispatcher] : remaining) {
     auto threadHandle = OpenThread(SYNCHRONIZE, FALSE, thread);
@@ -1022,6 +1400,8 @@ inline void Shutdown() {
       records.shrink_to_fit();
     else
       Wh_Log(L"Retaining %zu tray records on unreachable UI threads", records.size());
+    if (!menuEntries.empty())
+      Wh_Log(L"Retaining %zu tray menu entries on unreachable UI threads", menuEntries.size());
   }
   audio.reset();
 }

@@ -87,25 +87,28 @@ inline bool Dispatch(HWND window, std::function<void()> action) {
 }
 
 struct Runtime;
-inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
+inline void CALLBACK PanelVisibilityChanged(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
 inline std::mutex runtimesMutex;
 inline std::map<DWORD, Runtime *> runtimes;
 struct Runtime {
   HWND window = nullptr, pulseWindow = nullptr;
+  HWND presentedSound = nullptr;
   winrt::Windows::UI::Core::CoreDispatcher dispatcher{nullptr};
-  HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr;
+  HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr, hideHook = nullptr, cloakHook = nullptr;
   X::DispatcherTimer timer{nullptr}, discoveryTimer{nullptr};
   winrt::event_token tick{}, discoveryTick{};
   std::vector<winrt::weak_ref<X::FrameworkElement>> discoveryCandidates;
   unsigned discoveryAttempts = 0;
   bool busy = false, discovering = false;
   winrt::weak_ref<X::FrameworkElement> l2frame;
-  int64_t frameToken = 0;
+  int64_t frameToken = 0, frameVisibilityToken = 0;
   std::vector<std::unique_ptr<SoundPage>> pages;
   std::vector<std::unique_ptr<QuickPage>> quickPages;
   struct PageWatch {
     winrt::weak_ref<X::FrameworkElement> page;
-    winrt::event_token loaded{}, layout{};
+    winrt::event_token loading{}, loaded{}, layout{};
+    std::unique_ptr<Journal> firstFrame;
+    ULONGLONG hiddenAt = 0;
   };
   std::vector<PageWatch> pageWatches;
   struct ViewWatch {
@@ -114,8 +117,45 @@ struct Runtime {
   };
   std::vector<ViewWatch> viewWatches;
   std::shared_ptr<VolumePulse> volumePulse;
+  ModSettings appliedSettings = SettingsSnapshot();
   bool volumeDuringRefresh = false;
   bool Hidden() const { return !WindowShown(window); }
+  void ClearSoundPresentation() {
+    if (presentedSound)
+      RemovePropW(presentedSound, soundPageProperty);
+    presentedSound = nullptr;
+  }
+  void ReportSoundPresentation(DWORD shownAt = 0) {
+    auto frame = l2frame.get().try_as<C::ContentControl>();
+    auto page = frame ? frame.Content().try_as<X::FrameworkElement>() : nullptr;
+    bool sound = page && page.IsLoaded() && page.XamlRoot() &&
+                 Class(page).find(L"ControlCenter.FullScreenPage") != std::wstring::npos &&
+                 (page.FindName(L"OutputGroupTitle") || Named(page, L"OutputGroupTitle"));
+    if (sound)
+      for (auto element = page; element; element = Parent(element))
+        if (element.Visibility() != X::Visibility::Visible ||
+            (element != page && element.Opacity() <= 0)) {
+          sound = false;
+          break;
+        }
+    auto monitor = sound && window ? MonitorFromWindow(window, MONITOR_DEFAULTTONULL) : nullptr;
+    bool shown = monitor && !Hidden();
+    if (presentedSound && (!shown || presentedSound != window))
+      ClearSoundPresentation();
+    if (shown && (GetPropW(window, soundPageProperty) == monitor ||
+                  SetPropW(window, soundPageProperty, monitor)))
+      presentedSound = window;
+    if (!monitor || (!shown && !shownAt))
+      return;
+    // WinEvent callbacks can be queued behind a close. A show event for the
+    // current Sound page is still evidence that the request activated it.
+    for (auto type : {L"Shell_TrayWnd", L"Shell_SecondaryTrayWnd"})
+      for (HWND taskbar = nullptr; (taskbar = FindWindowExW(nullptr, taskbar, type, nullptr));)
+        if (auto token = reinterpret_cast<UINT_PTR>(GetPropW(taskbar, soundRequestProperty));
+            token && MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == monitor &&
+            (!shownAt || SoundEventMatchesRequest(token, shownAt)))
+          PostMessageW(taskbar, soundShownMessage, token, reinterpret_cast<LPARAM>(monitor));
+  }
   void Wake() {
     if (timer && !stopping) {
       timer.Interval(std::chrono::milliseconds(200));
@@ -141,6 +181,8 @@ struct Runtime {
       return 0;
     }
     if (message == WM_NCDESTROY) {
+      if (self->presentedSound == handle)
+        self->ClearSoundPresentation();
       if (self->pulseWindow == handle) {
         if (self->volumePulse)
           self->volumePulse->active = false;
@@ -183,10 +225,14 @@ struct Runtime {
     discoveryTimer.Interval(std::chrono::milliseconds(1));
     discoveryTick = discoveryTimer.Tick([this](auto &&, auto &&) { DiscoverPending(); });
     DWORD process = GetCurrentProcessId(), thread = GetCurrentThreadId();
-    showHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, nullptr, PanelShown, process,
-                               thread, WINEVENT_OUTOFCONTEXT);
-    uncloakHook = SetWinEventHook(0x8018 /*EVENT_OBJECT_UNCLOAKED*/, 0x8018, nullptr, PanelShown,
-                                  process, thread, WINEVENT_OUTOFCONTEXT);
+    auto watch = [process, thread](DWORD event) {
+      return SetWinEventHook(event, event, nullptr, PanelVisibilityChanged, process, thread,
+                             WINEVENT_OUTOFCONTEXT);
+    };
+    showHook = watch(EVENT_OBJECT_SHOW);
+    uncloakHook = watch(EVENT_OBJECT_UNCLOAKED);
+    hideHook = watch(EVENT_OBJECT_HIDE);
+    cloakHook = watch(EVENT_OBJECT_CLOAKED);
     std::lock_guard lock(runtimesMutex);
     runtimes[thread] = this;
   }
@@ -195,12 +241,12 @@ struct Runtime {
     if (!frame)
       return;
     auto page = frame.Content().try_as<X::FrameworkElement>();
+    ReportSoundPresentation();
     if (!page || Class(page).find(L"ControlCenter.FullScreenPage") == std::wstring::npos)
       return;
     WatchPage(page);
     Wake();
-    if (page.IsLoaded())
-      BeforeDisplay(page, true);
+    BeforeDisplay(page, true);
   }
   void WatchFrame(X::FrameworkElement const &frame) {
     if (auto current = l2frame.get(); current && current == frame)
@@ -217,19 +263,37 @@ struct Runtime {
           } catch (...) {
           }
         });
+    frameVisibilityToken = frame.RegisterPropertyChangedCallback(
+        X::UIElement::VisibilityProperty(),
+        [this](X::DependencyObject const &, X::DependencyProperty const &) {
+          try {
+            ReportSoundPresentation();
+          } catch (...) {
+            Wh_Log(L"Sound page visibility: %08X", winrt::to_hresult());
+          }
+        });
     OnFrameContent(frame);
   }
   void UnwatchFrame() {
-    if (auto frame = l2frame.get(); frame && frameToken)
-      try {
-        frame.UnregisterPropertyChangedCallback(C::ContentControl::ContentProperty(), frameToken);
-      } catch (...) {
-      }
+    ClearSoundPresentation();
+    if (auto frame = l2frame.get())
+      for (auto const &[property, token] :
+           {std::pair{C::ContentControl::ContentProperty(), frameToken},
+            std::pair{X::UIElement::VisibilityProperty(), frameVisibilityToken}})
+        if (token)
+          try {
+            frame.UnregisterPropertyChangedCallback(property, token);
+          } catch (...) {
+          }
     l2frame = nullptr;
-    frameToken = 0;
+    frameToken = frameVisibilityToken = 0;
+  }
+  bool IsCurrentPage(X::FrameworkElement const &page) const {
+    auto frame = l2frame.get().try_as<C::ContentControl>();
+    return !frame || frame.Content() == page;
   }
   void PreparePage(X::FrameworkElement const &page, bool opening) {
-    if (!page.IsLoaded() || Retired(page))
+    if (Retired(page) || !IsCurrentPage(page))
       return;
     for (auto const &item : pages)
       if (item->Page() == page) {
@@ -239,15 +303,21 @@ struct Runtime {
           item->BeforeRender();
         return;
       }
-    if (!Named(page, L"OutputGroupTitle"))
+    if ((!page.IsLoaded() && !Parent(page)) || !Named(page, L"OutputGroupTitle"))
       return;
+    RetireOthers(page);
     auto pulse = volumePulse;
     auto patch = std::make_unique<SoundPage>(page, window, [pulse] {
       if (pulse)
         pulse->Post();
     });
     if (patch->Apply()) {
+      if (auto watch = std::find_if(pageWatches.begin(), pageWatches.end(),
+                                   [&](auto const &item) { return item.page.get() == page; });
+          watch != pageWatches.end())
+        watch->firstFrame.reset();
       patch->PrepareInitialLayout();
+      patch->BeforeRender();
       pages.push_back(std::move(patch));
       Wh_Log(L"Sound page attached through ControlCenter symbols");
     }
@@ -258,7 +328,7 @@ struct Runtime {
     busy = true;
     try {
       EnsureVolumePulse();
-      RetirePending();
+      ReportSoundPresentation();
       PreparePage(page, opening);
     } catch (...) {
       Wh_Log(L"Initial native layout: %08X", winrt::to_hresult());
@@ -270,10 +340,8 @@ struct Runtime {
         volumePulse->Post();
     }
   }
-  // Windows builds a new Sound FullScreenPage for every opening and the old one
-  // stays loaded. If every old page kept its patch, timers and layout handlers,
-  // each opening would get slower. A newly created page retires all others:
-  // patch restored, handlers removed, never patched again.
+  // The shell can retain old page objects. Only a new current Sound page
+  // retires them and stops their handlers.
   std::vector<winrt::weak_ref<X::FrameworkElement>> retired;
   bool Retired(X::FrameworkElement const &page) {
     for (auto it = retired.begin(); it != retired.end();) {
@@ -296,6 +364,7 @@ struct Runtime {
         continue;
       }
       if (existing) {
+        existing.Loading(it->loading);
         existing.Loaded(it->loaded);
         existing.LayoutUpdated(it->layout);
         retired.push_back(it->page);
@@ -313,7 +382,6 @@ struct Runtime {
       it = pages.erase(it);
     }
   }
-  winrt::weak_ref<X::FrameworkElement> newestPage;
   // Same for Quick Settings, in case the shell also rebuilds ControlCenterView.
   winrt::weak_ref<X::FrameworkElement> newestQuick;
   void RetireQuick() {
@@ -330,14 +398,9 @@ struct Runtime {
       it = quickPages.erase(it);
     }
   }
-  void RetirePending() {
-    if (auto page = newestPage.get()) {
-      newestPage = nullptr;
-      RetireOthers(page);
-    }
-  }
   void WatchPage(X::FrameworkElement const &page) {
-    if (Retired(page))
+    // Discovery also visits pages that the shell is building off-screen.
+    if (Retired(page) || !IsCurrentPage(page))
       return;
     for (auto it = pageWatches.begin(); it != pageWatches.end();)
       if (auto existing = it->page.get()) {
@@ -346,12 +409,22 @@ struct Runtime {
         ++it;
       } else
         it = pageWatches.erase(it);
-    // Retirement is deferred until BeforeDisplay or Refresh. BeforeDisplay
-    // (Loaded/LayoutUpdated of the new page) and Refresh retire the others.
-    newestPage = winrt::make_weak(page);
     auto weak = winrt::make_weak(page);
     PageWatch watch;
     watch.page = weak;
+    // Content can be assigned before Loaded, and its stock layout can be
+    // rendered during the native entrance. Hold that content until Apply()
+    // has rebuilt it. The native surface and its animation remain active.
+    if (page.FindName(L"OutputGroupTitle") || Named(page, L"OutputGroupTitle")) {
+      watch.firstFrame = std::make_unique<Journal>();
+      watch.firstFrame->Save(page, X::UIElement::OpacityProperty());
+      page.Opacity(0);
+      watch.hiddenAt = GetTickCount64();
+    }
+    watch.loading = page.Loading([this, weak](auto &&, auto &&) {
+      if (auto page = weak.get())
+        BeforeDisplay(page, true);
+    });
     watch.loaded = page.Loaded([this, weak](auto &&, auto &&) {
       if (auto page = weak.get())
         BeforeDisplay(page, true);
@@ -495,16 +568,18 @@ struct Runtime {
     busy = true;
     try {
       EnsureVolumePulse();
-      RetirePending();
+      ReportSoundPresentation();
       RetireQuick();
-      for (auto it = pages.begin(); it != pages.end();)
-        if (!(*it)->Alive()) {
-          (*it)->Abandon();
-          it = pages.erase(it);
-        } else {
-          (*it)->Refresh();
-          ++it;
-        }
+      ApplySettings();
+      for (auto &watch : pageWatches)
+        if (watch.firstFrame && GetTickCount64() - watch.hiddenAt >= 400)
+          watch.firstFrame.reset();
+      // Loading and layout events can temporarily detach the page or its
+      // output heading while the frame still owns it. Preserve its controls
+      // and handlers. RetireOthers handles replacement of the frame content.
+      for (auto const &page : pages)
+        if (page->Loaded())
+          page->Refresh();
       for (auto const &q : quickPages)
         q->Refresh();
     } catch (...) {
@@ -526,6 +601,22 @@ struct Runtime {
         volumePulse->Post();
     }
   }
+  void ApplySettings() {
+    auto next = SettingsSnapshot();
+    if (appliedSettings == next)
+      return;
+    for (auto const &page : pages)
+      page->ApplySettings(next);
+    for (auto &quick : quickPages)
+      if (!quick->ApplySettings(next)) {
+        auto view = quick->View();
+        quick->Restore();
+        quick = std::make_unique<QuickPage>(view, window);
+      }
+    appliedSettings = std::move(next);
+    Wh_Log(L"Applied settings to %zu Quick Settings views and %zu Sound pages",
+           quickPages.size(), pages.size());
+  }
   void Stop() {
     if (timer) {
       timer.Stop();
@@ -536,10 +627,10 @@ struct Runtime {
       discoveryTimer.Tick(discoveryTick);
     }
     discoveryCandidates.clear();
-    for (auto hook : {showHook, uncloakHook})
+    for (auto hook : {showHook, uncloakHook, hideHook, cloakHook})
       if (hook)
         UnhookWinEvent(hook);
-    showHook = uncloakHook = nullptr;
+    showHook = uncloakHook = hideHook = cloakHook = nullptr;
     if (volumePulse)
       volumePulse->active = false;
     if (pulseWindow && IsWindow(pulseWindow))
@@ -554,6 +645,7 @@ struct Runtime {
     viewWatches.clear();
     for (auto const &watch : pageWatches)
       if (auto page = watch.page.get()) {
+        page.Loading(watch.loading);
         page.Loaded(watch.loaded);
         page.LayoutUpdated(watch.layout);
       }
@@ -575,17 +667,41 @@ struct Runtime {
 // UI-thread state is explicitly stopped on unload; no XAML destruction during
 // process/thread termination after the other threads have already disappeared.
 [[clang::no_destroy]] inline thread_local std::unique_ptr<Runtime> runtime;
-inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND handle, LONG object, LONG, DWORD,
-                                DWORD) {
-  if (stopping || object != OBJID_WINDOW || !runtime || !handle)
+inline void CALLBACK PanelVisibilityChanged(HWINEVENTHOOK, DWORD event, HWND handle, LONG object,
+                                            LONG child, DWORD, DWORD shownAt) {
+  if (stopping || object != OBJID_WINDOW || child != CHILDID_SELF || !runtime || !handle)
     return;
   WCHAR name[96]{};
   GetClassNameW(handle, name, ARRAYSIZE(name));
   if (_wcsicmp(name, L"ControlCenterWindow"))
     return;
+  if (event == EVENT_OBJECT_HIDE || event == EVENT_OBJECT_CLOAKED) {
+    if (runtime->presentedSound == handle)
+      runtime->ClearSoundPresentation();
+    return;
+  }
   // This is only the visibility handle. EnsureVolumePulse owns pulseWindow.
   runtime->window = handle;
+  try {
+    runtime->ReportSoundPresentation(shownAt);
+  } catch (...) {
+    Wh_Log(L"Sound page presentation: %08X", winrt::to_hresult());
+  }
   runtime->Wake();
+}
+inline void RefreshHostSettings() {
+  std::vector<HWND> windows;
+  {
+    std::lock_guard lock(runtimesMutex);
+    for (auto const &[thread, state] : runtimes)
+      if (auto handle = ThreadWindow(thread))
+        windows.push_back(handle);
+  }
+  for (auto window : windows)
+    Dispatch(window, [] {
+      if (runtime)
+        runtime->Wake();
+    });
 }
 inline void StopBridge() {
   std::vector<std::pair<DWORD, Runtime *>> copy;

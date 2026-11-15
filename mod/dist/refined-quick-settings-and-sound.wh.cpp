@@ -1,16 +1,25 @@
 // ==WindhawkMod==
 // @id refined-quick-settings-and-sound
 // @name Refined Quick Settings and Sound
-// @description A "vanilla+" rework of the Windows 11 Quick Settings and Volume mixer panels for daily use
-// @version 0.1.154
-// @author HeyOkay
+// @description More options for Quick Settings and direct access to sound settings
+// @description:ru-RU Дополнительные параметры панели «Быстрые настройки» и открытие раздела «Звук» одним нажатием
+// @description:es-ES Más opciones para la configuración rápida y acceso directo a los ajustes de sonido
+// @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
+// @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
+// @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
+// @version 0.6.4
+// @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
+// @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
 // @include explorer.exe
 // @include ShellHost.exe
 // @architecture x86-64
 // @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lpowrprof -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
+// Modified by Constantine Travkin on 2026-11-14.
+// Based on HeyOkay's v0.1.154 (source blob 7229ac098ad0e8732905b831259d2aa99984bb31).
+// Upstream: https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
 // ==WindhawkModReadme==
 /*
 # Refined Quick Settings and Sound
@@ -19,61 +28,66 @@
 
 This "vanilla+" Windhawk mod reworks the Windows 11 "Quick Settings" and
 "Volume mixer" panels and makes them fit for daily use. It follows the
-Windows 11 design language, refining existing features and adding new ones:
-thin sliders, even row spacing at every display scale and a smooth frame
-transition to the Sound page.
+Windows 11 design language with thin sliders, even row spacing and a smooth
+frame transition to the Sound page.
 
-Everything runs inside the shell's own panels (ShellHost): no extra windows,
-the system Acrylic, fonts, themes, lists, bindings and animations are kept, and
-customizations are restored when the mod is unloaded.
+Everything runs inside the shell's own panels (ShellHost). The system Acrylic,
+fonts, themes, lists, bindings and animations are kept, and the original layout
+is restored when the mod is unloaded.
 
 ## Features
 
 **Quick Settings**
 
-- Brightness control for DDC/CI-compatible displays, with animated glyphs.
-- Press the brightness glyph to toggle night light on and off.
-- Open display settings directly from the glyph on the right side of the slider.
+- **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
+- The DDC/CI brightness row has a shortcut to Display settings and a Night light button. The latter uses the native quick action when available and opens Night light settings otherwise.
+- Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
+- Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
 
 **Sound**
 
 - The "Sound output" page is now simply "Sound".
 - Change the output and input devices and the spatial sound provider from
   dropdown lists.
-- Below them, a reworked Volume mixer for the apps. It is collapsible and
-  remembers its last state.
-- Mouse wheel on every slider; press an app's icon to mute and restore it, or
-  its volume number to set it to 100.
-- Hide apps from the mixer by name (setting below).
+- Below them is a reworked Volume mixer for the apps. It starts collapsed the first time Sound opens in each ShellHost process and remembers its state on subsequent openings.
+- Volume sliders show the new value when dragged or scrolled. The default wheel step is 2 percentage points.
+- Press an app's icon to mute and restore it, or its volume number to set it to 100.
+- **Hide from the volume mixer** takes app names or executable names, one per row. Hidden apps keep playing audio.
 
 **Taskbar**
 
-- Click the volume icon to open Sound directly.
-- The system's animated volume glyph and an Ethernet glyph for wired networks.
+- **Quick access to Sound** opens Sound with a click on the taskbar volume icon.
+- **Middle-click to mute** toggles sound from the volume icon and preserves the volume level. Off by default.
+- **More sound settings** in the volume icon menu opens the classic Sound Control Panel.
+- Device Manager is available in the network and battery icon menus.
+- **Alternative icons** includes the animated volume and wired network icons from the original mod. Each location has its own switch. Switching one off uses the Windows icon there.
 
-## Compatibility
+## Platforms
 
-- Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64
-  (ARM64 is untested).
-  Development testing: build 26300, primarily at 125% scale.
+- Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64.
+  The original mod was developed on build 26300, primarily at 125% scale.
 - Other Windows builds and display scales need validation. The mod depends on
   internal shell XAML elements and symbols which can change with Windows updates.
 - DDC/CI brightness requires a compatible monitor with DDC/CI enabled.
-- Added labels such as "Sound" and "Input device" are in English.
-- The first Sound opening in each ShellHost process starts with the mixer
-  collapsed; subsequent openings remember its state.
+- Added labels are available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese.
 
-Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll and the public XAML visual tree; it does not open a XAML Diagnostics connection. Compatibility with other mods that edit the same controls still requires live testing. If the panel was already open when enabling the mod, close and reopen it; restart ShellHost if it is not picked up.
+## Usage
 
-## Notes
+Open Quick Settings with Win+A and Sound with Win+Ctrl+V. When **Quick access to Sound** is enabled, the taskbar volume icon opens Sound as well. Adjust the mod's options on its **Settings** tab in Windhawk.
 
-Disable other mods that change the Quick Settings, the Sound page or the
-taskbar volume icon before enabling this one. Errors are written to the
-Windhawk log.
+Disable other mods or styles that change the same controls. If the panels do not update after enabling the mod, close and reopen them. If needed, restart ShellHost and check the Windhawk log.
 
-## Credits and license
+## Updating from the Windhawk catalog version 0.1.154
 
-GPL-3.0-only. The UI-thread dispatch technique follows
+If **Hidden applications** was filled in before the update, move those entries before adding any new rows under **Hide from the volume mixer**.
+
+1. Open **Advanced** → **Mod settings**. In the **Load** menu, choose **Load formatted**.
+2. Replace the `hiddenApps` string with one indexed setting per entry. For example, `"hiddenApps": "iCloud; Example.exe"` becomes `"hiddenApplications[0]": "iCloud"` and `"hiddenApplications[1]": "Example.exe"`. If rows are already filled in, use the next free indices. Remove `hiddenApps` in the same edit and keep the other settings.
+3. Click **Save** and check that the entries appear under **Hide from the volume mixer** on the **Settings** tab.
+
+## Licenses
+
+[GPL-3.0-only](https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound/blob/main/LICENSE). The UI-thread dispatch technique follows
 [m417z's Notification Center Styler](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/windows-11-notification-center-styler.wh.cpp)
 (GPL-3.0). ControlCenter.dll discovery uses the COM produce-interface pattern
 documented by [Per-monitor brightness](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/per-monitor-brightness.wh.cpp).
@@ -82,13 +96,590 @@ Sound Output Direct and Taller mod (GPL-3.0-only).
 The sliders-horizontal and ethernet-port icons are from
 [Lucide](https://lucide.dev/) (ISC); the license notice is included below
 in this source file.
+
+## Links
+
+- [Refined Quick Settings and Sound on GitHub](https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound)
 */
 // ==/WindhawkModReadme==
 // ==WindhawkModSettings==
 /*
-- hiddenApps: ""
-  $name: Hidden applications
-  $description: Parts of application names, separated by semicolons, to hide from the volume mixer. Hiding does not mute them.
+- quickSoundAccess: true
+  $name: "Quick access to Sound"
+  $name:ru-RU: "Быстрый доступ к настройкам звука"
+  $name:es-ES: "Acceso rápido al sonido"
+  $name:de-DE: "Schnellzugriff auf Sound"
+  $name:pt-BR: "Acesso rápido ao som"
+  $name:zh-CN: "快速访问声音设置"
+  $description: "Opens the Sound panel from the taskbar volume icon"
+  $description:ru-RU: "Панель «Звук» открывается по нажатию на значок громкости"
+  $description:es-ES: "Abre el panel Sonido desde el icono de volumen de la barra de tareas"
+  $description:de-DE: "Öffnet das Soundfenster über das Lautstärkesymbol in der Taskleiste"
+  $description:pt-BR: "Abre o painel Som pelo ícone de volume da barra de tarefas"
+  $description:zh-CN: "单击任务栏上的音量图标可直接打开“声音”面板"
+- trayMiddleClickMute: false
+  $name: "Middle-click to mute"
+  $name:ru-RU: "Выключение звука средним кликом"
+  $name:es-ES: "Silenciar con el botón central"
+  $name:de-DE: "Ton per Mittelklick stummschalten"
+  $name:pt-BR: "Silenciar com o botão do meio"
+  $name:zh-CN: "单击鼠标中键静音"
+  $description: "Middle-click the taskbar volume icon to mute or unmute"
+  $description:ru-RU: "Средний клик по значку громкости на панели задач выключает или включает звук"
+  $description:es-ES: "El botón central sobre el icono de volumen de la barra de tareas silencia o reactiva el sonido"
+  $description:de-DE: "Ein Mittelklick auf das Lautstärkesymbol in der Taskleiste schaltet den Ton aus oder wieder ein"
+  $description:pt-BR: "O botão do meio no ícone de volume da barra de tarefas ativa ou desativa o som"
+  $description:zh-CN: "在任务栏的音量图标上单击鼠标中键可静音或取消静音"
+- volumeWheelStep: 2
+  $name: Volume wheel step
+  $name:ru-RU: Шаг громкости при прокрутке
+  $name:es-ES: Paso de volumen con la rueda del ratón
+  $name:de-DE: Lautstärkeschritt mit dem Mausrad
+  $name:pt-BR: Passo do volume com a roda do mouse
+  $name:zh-CN: 鼠标滚轮音量步长
+  $description: Percentage points per notch over a volume slider, from 1 to 100
+  $description:ru-RU: Изменение громкости за деление колеса, от 1 до 100 процентных пунктов
+  $description:es-ES: Puntos porcentuales por paso de rueda sobre un control de volumen, de 1 a 100
+  $description:de-DE: Prozentpunkte pro Mausradschritt über einem Lautstärkeregler, von 1 bis 100
+  $description:pt-BR: Pontos percentuais por passo da roda sobre um controle de volume, de 1 a 100
+  $description:zh-CN: 在音量滑块上滚动一格改变的百分点，范围为 1 到 100
+- quickActionRows: "2"
+  $name: Rows of tiles
+  $name:ru-RU: Строки плиток
+  $name:es-ES: Filas de mosaicos
+  $name:de-DE: Kachelzeilen in den Schnelleinstellungen
+  $name:pt-BR: Linhas de blocos nas configurações rápidas
+  $name:zh-CN: 快速设置磁贴行数
+  $description: How many rows fit on each Quick Settings page
+  $description:ru-RU: Сколько строк помещается на одной странице быстрых настроек
+  $description:es-ES: Número de filas de mosaicos por página de Configuración rápida
+  $description:de-DE: Anzahl der Kachelzeilen pro Seite der Schnelleinstellungen
+  $description:pt-BR: Número de linhas por página das Configurações rápidas
+  $description:zh-CN: 每页快速设置显示的磁贴行数
+  $options:
+  - "1": "1"
+  - "2": "2"
+  - "3": "3"
+  - "4": "4"
+- brightnessMode: auto
+  $name: Display brightness
+  $name:ru-RU: Яркость дисплея
+  $name:es-ES: Brillo de la pantalla
+  $name:de-DE: Anzeigehelligkeit
+  $name:pt-BR: Brilho da tela
+  $name:zh-CN: 显示亮度
+  $description: In Auto mode, the slider appears when brightness can be adjusted
+  $description:ru-RU: В режиме «Авто» ползунок виден, если яркость можно регулировать
+  $description:es-ES: En modo automático, el control se muestra si el brillo se puede ajustar
+  $description:de-DE: Im Modus Automatisch erscheint der Regler, wenn die Helligkeit einstellbar ist
+  $description:pt-BR: No modo automático, o controle aparece quando é possível ajustar o brilho
+  $description:zh-CN: 自动模式下，可调节亮度时显示滑块
+  $options:
+  - auto: Auto
+  - disabled: Disable
+  $options:ru-RU:
+  - auto: Авто
+  - disabled: Отключить
+  $options:es-ES:
+  - auto: Automático
+  - disabled: Desactivar
+  $options:de-DE:
+  - auto: Automatisch
+  - disabled: Deaktivieren
+  $options:pt-BR:
+  - auto: Automático
+  - disabled: Desativar
+  $options:zh-CN:
+  - auto: 自动
+  - disabled: 禁用
+- quickSettings:
+  - shortcut1: display
+    $name: "Shortcut 1"
+    $name:ru-RU: "Переход 1"
+    $name:es-ES: "Acceso directo 1"
+    $name:de-DE: "Verknüpfung 1"
+    $name:pt-BR: "Atalho 1"
+    $name:zh-CN: "快捷方式 1"
+    $options:
+    - none: "None"
+    - display: "Display settings"
+    - graphics: "Graphics"
+    - notifications: "Notifications"
+    - power: "Power"
+    - bluetooth: "Bluetooth & devices"
+    - network: "Network & internet"
+    - networkSettings: "Advanced network settings"
+    - apps: "Installed apps"
+    - update: "Windows Update"
+    $options:ru-RU:
+    - none: "Нет"
+    - display: "Параметры дисплея"
+    - graphics: "Графика"
+    - notifications: "Уведомления"
+    - power: "Питание"
+    - bluetooth: "Bluetooth и устройства"
+    - network: "Сеть и Интернет"
+    - networkSettings: "Сетевые параметры"
+    - apps: "Установленные приложения"
+    - update: "Центр обновления"
+    $options:es-ES:
+    - none: "Ninguno"
+    - display: "Configuración de pantalla"
+    - graphics: "Gráficos"
+    - notifications: "Notificaciones"
+    - power: "Energía"
+    - bluetooth: "Bluetooth y dispositivos"
+    - network: "Red e Internet"
+    - networkSettings: "Configuración de red avanzada"
+    - apps: "Aplicaciones instaladas"
+    - update: "Windows Update"
+    $options:de-DE:
+    - none: "Keine"
+    - display: "Anzeigeeinstellungen"
+    - graphics: "Grafik"
+    - notifications: "Benachrichtigungen"
+    - power: "Strom"
+    - bluetooth: "Bluetooth und Geräte"
+    - network: "Netzwerk und Internet"
+    - networkSettings: "Erweiterte Netzwerkeinstellungen"
+    - apps: "Installierte Apps"
+    - update: "Windows Update"
+    $options:pt-BR:
+    - none: "Nenhum"
+    - display: "Configurações de exibição"
+    - graphics: "Elementos gráficos"
+    - notifications: "Notificações"
+    - power: "Energia"
+    - bluetooth: "Bluetooth e dispositivos"
+    - network: "Rede e Internet"
+    - networkSettings: "Configurações avançadas de rede"
+    - apps: "Aplicativos instalados"
+    - update: "Windows Update"
+    $options:zh-CN:
+    - none: "无"
+    - display: "显示设置"
+    - graphics: "图形"
+    - notifications: "通知"
+    - power: "电源"
+    - bluetooth: "蓝牙和设备"
+    - network: "网络和 Internet"
+    - networkSettings: "高级网络设置"
+    - apps: "已安装的应用"
+    - update: "Windows 更新"
+  - shortcut2: none
+    $name: "Shortcut 2"
+    $name:ru-RU: "Переход 2"
+    $name:es-ES: "Acceso directo 2"
+    $name:de-DE: "Verknüpfung 2"
+    $name:pt-BR: "Atalho 2"
+    $name:zh-CN: "快捷方式 2"
+    $options:
+    - none: "None"
+    - display: "Display settings"
+    - graphics: "Graphics"
+    - notifications: "Notifications"
+    - power: "Power"
+    - bluetooth: "Bluetooth & devices"
+    - network: "Network & internet"
+    - networkSettings: "Advanced network settings"
+    - apps: "Installed apps"
+    - update: "Windows Update"
+    $options:ru-RU:
+    - none: "Нет"
+    - display: "Параметры дисплея"
+    - graphics: "Графика"
+    - notifications: "Уведомления"
+    - power: "Питание"
+    - bluetooth: "Bluetooth и устройства"
+    - network: "Сеть и Интернет"
+    - networkSettings: "Сетевые параметры"
+    - apps: "Установленные приложения"
+    - update: "Центр обновления"
+    $options:es-ES:
+    - none: "Ninguno"
+    - display: "Configuración de pantalla"
+    - graphics: "Gráficos"
+    - notifications: "Notificaciones"
+    - power: "Energía"
+    - bluetooth: "Bluetooth y dispositivos"
+    - network: "Red e Internet"
+    - networkSettings: "Configuración de red avanzada"
+    - apps: "Aplicaciones instaladas"
+    - update: "Windows Update"
+    $options:de-DE:
+    - none: "Keine"
+    - display: "Anzeigeeinstellungen"
+    - graphics: "Grafik"
+    - notifications: "Benachrichtigungen"
+    - power: "Strom"
+    - bluetooth: "Bluetooth und Geräte"
+    - network: "Netzwerk und Internet"
+    - networkSettings: "Erweiterte Netzwerkeinstellungen"
+    - apps: "Installierte Apps"
+    - update: "Windows Update"
+    $options:pt-BR:
+    - none: "Nenhum"
+    - display: "Configurações de exibição"
+    - graphics: "Elementos gráficos"
+    - notifications: "Notificações"
+    - power: "Energia"
+    - bluetooth: "Bluetooth e dispositivos"
+    - network: "Rede e Internet"
+    - networkSettings: "Configurações avançadas de rede"
+    - apps: "Aplicativos instalados"
+    - update: "Windows Update"
+    $options:zh-CN:
+    - none: "无"
+    - display: "显示设置"
+    - graphics: "图形"
+    - notifications: "通知"
+    - power: "电源"
+    - bluetooth: "蓝牙和设备"
+    - network: "网络和 Internet"
+    - networkSettings: "高级网络设置"
+    - apps: "已安装的应用"
+    - update: "Windows 更新"
+  - shortcut3: none
+    $name: "Shortcut 3"
+    $name:ru-RU: "Переход 3"
+    $name:es-ES: "Acceso directo 3"
+    $name:de-DE: "Verknüpfung 3"
+    $name:pt-BR: "Atalho 3"
+    $name:zh-CN: "快捷方式 3"
+    $options:
+    - none: "None"
+    - display: "Display settings"
+    - graphics: "Graphics"
+    - notifications: "Notifications"
+    - power: "Power"
+    - bluetooth: "Bluetooth & devices"
+    - network: "Network & internet"
+    - networkSettings: "Advanced network settings"
+    - apps: "Installed apps"
+    - update: "Windows Update"
+    $options:ru-RU:
+    - none: "Нет"
+    - display: "Параметры дисплея"
+    - graphics: "Графика"
+    - notifications: "Уведомления"
+    - power: "Питание"
+    - bluetooth: "Bluetooth и устройства"
+    - network: "Сеть и Интернет"
+    - networkSettings: "Сетевые параметры"
+    - apps: "Установленные приложения"
+    - update: "Центр обновления"
+    $options:es-ES:
+    - none: "Ninguno"
+    - display: "Configuración de pantalla"
+    - graphics: "Gráficos"
+    - notifications: "Notificaciones"
+    - power: "Energía"
+    - bluetooth: "Bluetooth y dispositivos"
+    - network: "Red e Internet"
+    - networkSettings: "Configuración de red avanzada"
+    - apps: "Aplicaciones instaladas"
+    - update: "Windows Update"
+    $options:de-DE:
+    - none: "Keine"
+    - display: "Anzeigeeinstellungen"
+    - graphics: "Grafik"
+    - notifications: "Benachrichtigungen"
+    - power: "Strom"
+    - bluetooth: "Bluetooth und Geräte"
+    - network: "Netzwerk und Internet"
+    - networkSettings: "Erweiterte Netzwerkeinstellungen"
+    - apps: "Installierte Apps"
+    - update: "Windows Update"
+    $options:pt-BR:
+    - none: "Nenhum"
+    - display: "Configurações de exibição"
+    - graphics: "Elementos gráficos"
+    - notifications: "Notificações"
+    - power: "Energia"
+    - bluetooth: "Bluetooth e dispositivos"
+    - network: "Rede e Internet"
+    - networkSettings: "Configurações avançadas de rede"
+    - apps: "Aplicativos instalados"
+    - update: "Windows Update"
+    $options:zh-CN:
+    - none: "无"
+    - display: "显示设置"
+    - graphics: "图形"
+    - notifications: "通知"
+    - power: "电源"
+    - bluetooth: "蓝牙和设备"
+    - network: "网络和 Internet"
+    - networkSettings: "高级网络设置"
+    - apps: "已安装的应用"
+    - update: "Windows 更新"
+  - shortcut4: none
+    $name: "Shortcut 4"
+    $name:ru-RU: "Переход 4"
+    $name:es-ES: "Acceso directo 4"
+    $name:de-DE: "Verknüpfung 4"
+    $name:pt-BR: "Atalho 4"
+    $name:zh-CN: "快捷方式 4"
+    $options:
+    - none: "None"
+    - display: "Display settings"
+    - graphics: "Graphics"
+    - notifications: "Notifications"
+    - power: "Power"
+    - bluetooth: "Bluetooth & devices"
+    - network: "Network & internet"
+    - networkSettings: "Advanced network settings"
+    - apps: "Installed apps"
+    - update: "Windows Update"
+    $options:ru-RU:
+    - none: "Нет"
+    - display: "Параметры дисплея"
+    - graphics: "Графика"
+    - notifications: "Уведомления"
+    - power: "Питание"
+    - bluetooth: "Bluetooth и устройства"
+    - network: "Сеть и Интернет"
+    - networkSettings: "Сетевые параметры"
+    - apps: "Установленные приложения"
+    - update: "Центр обновления"
+    $options:es-ES:
+    - none: "Ninguno"
+    - display: "Configuración de pantalla"
+    - graphics: "Gráficos"
+    - notifications: "Notificaciones"
+    - power: "Energía"
+    - bluetooth: "Bluetooth y dispositivos"
+    - network: "Red e Internet"
+    - networkSettings: "Configuración de red avanzada"
+    - apps: "Aplicaciones instaladas"
+    - update: "Windows Update"
+    $options:de-DE:
+    - none: "Keine"
+    - display: "Anzeigeeinstellungen"
+    - graphics: "Grafik"
+    - notifications: "Benachrichtigungen"
+    - power: "Strom"
+    - bluetooth: "Bluetooth und Geräte"
+    - network: "Netzwerk und Internet"
+    - networkSettings: "Erweiterte Netzwerkeinstellungen"
+    - apps: "Installierte Apps"
+    - update: "Windows Update"
+    $options:pt-BR:
+    - none: "Nenhum"
+    - display: "Configurações de exibição"
+    - graphics: "Elementos gráficos"
+    - notifications: "Notificações"
+    - power: "Energia"
+    - bluetooth: "Bluetooth e dispositivos"
+    - network: "Rede e Internet"
+    - networkSettings: "Configurações avançadas de rede"
+    - apps: "Aplicativos instalados"
+    - update: "Windows Update"
+    $options:zh-CN:
+    - none: "无"
+    - display: "显示设置"
+    - graphics: "图形"
+    - notifications: "通知"
+    - power: "电源"
+    - bluetooth: "蓝牙和设备"
+    - network: "网络和 Internet"
+    - networkSettings: "高级网络设置"
+    - apps: "已安装的应用"
+    - update: "Windows 更新"
+  - shortcut5: none
+    $name: "Shortcut 5"
+    $name:ru-RU: "Переход 5"
+    $name:es-ES: "Acceso directo 5"
+    $name:de-DE: "Verknüpfung 5"
+    $name:pt-BR: "Atalho 5"
+    $name:zh-CN: "快捷方式 5"
+    $options:
+    - none: "None"
+    - display: "Display settings"
+    - graphics: "Graphics"
+    - notifications: "Notifications"
+    - power: "Power"
+    - bluetooth: "Bluetooth & devices"
+    - network: "Network & internet"
+    - networkSettings: "Advanced network settings"
+    - apps: "Installed apps"
+    - update: "Windows Update"
+    $options:ru-RU:
+    - none: "Нет"
+    - display: "Параметры дисплея"
+    - graphics: "Графика"
+    - notifications: "Уведомления"
+    - power: "Питание"
+    - bluetooth: "Bluetooth и устройства"
+    - network: "Сеть и Интернет"
+    - networkSettings: "Сетевые параметры"
+    - apps: "Установленные приложения"
+    - update: "Центр обновления"
+    $options:es-ES:
+    - none: "Ninguno"
+    - display: "Configuración de pantalla"
+    - graphics: "Gráficos"
+    - notifications: "Notificaciones"
+    - power: "Energía"
+    - bluetooth: "Bluetooth y dispositivos"
+    - network: "Red e Internet"
+    - networkSettings: "Configuración de red avanzada"
+    - apps: "Aplicaciones instaladas"
+    - update: "Windows Update"
+    $options:de-DE:
+    - none: "Keine"
+    - display: "Anzeigeeinstellungen"
+    - graphics: "Grafik"
+    - notifications: "Benachrichtigungen"
+    - power: "Strom"
+    - bluetooth: "Bluetooth und Geräte"
+    - network: "Netzwerk und Internet"
+    - networkSettings: "Erweiterte Netzwerkeinstellungen"
+    - apps: "Installierte Apps"
+    - update: "Windows Update"
+    $options:pt-BR:
+    - none: "Nenhum"
+    - display: "Configurações de exibição"
+    - graphics: "Elementos gráficos"
+    - notifications: "Notificações"
+    - power: "Energia"
+    - bluetooth: "Bluetooth e dispositivos"
+    - network: "Rede e Internet"
+    - networkSettings: "Configurações avançadas de rede"
+    - apps: "Aplicativos instalados"
+    - update: "Windows Update"
+    $options:zh-CN:
+    - none: "无"
+    - display: "显示设置"
+    - graphics: "图形"
+    - notifications: "通知"
+    - power: "电源"
+    - bluetooth: "蓝牙和设备"
+    - network: "网络和 Internet"
+    - networkSettings: "高级网络设置"
+    - apps: "已安装的应用"
+    - update: "Windows 更新"
+  $name: "Additional shortcuts"
+  $name:ru-RU: "Дополнительные переходы"
+  $name:es-ES: "Accesos directos adicionales"
+  $name:de-DE: "Weitere Verknüpfungen"
+  $name:pt-BR: "Atalhos adicionais"
+  $name:zh-CN: "其他快捷方式"
+  $description: Shortcuts to the right of Settings, in the selected order, skipping empty slots and duplicates
+  $description:ru-RU: Порядок кнопок справа от «Настроек», пустые позиции и повторы пропускаются
+  $description:es-ES: Accesos a la derecha de Configuración, en el orden elegido y sin huecos ni duplicados
+  $description:de-DE: Verknüpfungen rechts neben Einstellungen in der gewählten Reihenfolge, ohne Lücken oder Duplikate
+  $description:pt-BR: Atalhos à direita de Configurações, na ordem escolhida, sem lacunas nem duplicatas
+  $description:zh-CN: 快捷方式按所选顺序显示在“设置”右侧，跳过空位及重复项
+- alternativeIcons:
+  - mixer:
+    - quick: true
+      $name: "Quick Settings"
+      $name:ru-RU: "Быстрые настройки"
+      $name:es-ES: "Configuración rápida"
+      $name:de-DE: "Schnelleinstellungen"
+      $name:pt-BR: "Configurações rápidas"
+      $name:zh-CN: "快速设置"
+    - sound: true
+      $name: "Sound panel"
+      $name:ru-RU: "Панель «Звук»"
+      $name:es-ES: "Panel Sonido"
+      $name:de-DE: "Soundbereich"
+      $name:pt-BR: "Painel Som"
+      $name:zh-CN: "“声音”面板"
+    $name: "Volume mixer"
+    $name:ru-RU: "Микшер громкости"
+    $name:es-ES: "Mezclador de volumen"
+    $name:de-DE: "Lautstärkemixer"
+    $name:pt-BR: "Mixer de volume"
+    $name:zh-CN: "音量合成器"
+  - volume:
+    - taskbar: true
+      $name: "Taskbar"
+      $name:ru-RU: "Панель задач"
+      $name:es-ES: "Barra de tareas"
+      $name:de-DE: "Taskleiste"
+      $name:pt-BR: "Barra de tarefas"
+      $name:zh-CN: "任务栏"
+    - quick: true
+      $name: "Quick Settings slider"
+      $name:ru-RU: "Ползунок в быстрых настройках"
+      $name:es-ES: "Control de Configuración rápida"
+      $name:de-DE: "Regler in den Schnelleinstellungen"
+      $name:pt-BR: "Controle das Configurações rápidas"
+      $name:zh-CN: "快速设置音量滑块"
+    - sound: true
+      $name: "Sound panel slider"
+      $name:ru-RU: "Ползунок на панели «Звук»"
+      $name:es-ES: "Control del panel Sonido"
+      $name:de-DE: "Regler im Soundbereich"
+      $name:pt-BR: "Controle do painel Som"
+      $name:zh-CN: "“声音”面板的音量滑块"
+    - apps: true
+      $name: "Muted apps in the mixer"
+      $name:ru-RU: "Приложения без звука в микшере"
+      $name:es-ES: "Aplicaciones silenciadas en el mezclador"
+      $name:de-DE: "Stummgeschaltete Apps im Mixer"
+      $name:pt-BR: "Aplicativos silenciados no mixer"
+      $name:zh-CN: "合成器中已静音的应用"
+    $name: "Speaker"
+    $name:ru-RU: "Динамик"
+    $name:es-ES: "Altavoz"
+    $name:de-DE: "Lautsprecher"
+    $name:pt-BR: "Alto-falante"
+    $name:zh-CN: "扬声器"
+  - ethernet:
+    - taskbar: true
+      $name: "Taskbar"
+      $name:ru-RU: "Панель задач"
+      $name:es-ES: "Barra de tareas"
+      $name:de-DE: "Taskleiste"
+      $name:pt-BR: "Barra de tarefas"
+      $name:zh-CN: "任务栏"
+    $name: "Ethernet"
+    $name:ru-RU: "Ethernet"
+    $name:es-ES: "Ethernet"
+    $name:de-DE: "Ethernet"
+    $name:pt-BR: "Ethernet"
+    $name:zh-CN: "以太网"
+  - gear:
+    - sound: true
+      $name: "Sound panel"
+      $name:ru-RU: "Панель «Звук»"
+      $name:es-ES: "Panel Sonido"
+      $name:de-DE: "Soundbereich"
+      $name:pt-BR: "Painel Som"
+      $name:zh-CN: "“声音”面板"
+    $name: "Settings gear"
+    $name:ru-RU: "Шестеренка настроек"
+    $name:es-ES: "Engranaje de configuración"
+    $name:de-DE: "Einstellungszahnrad"
+    $name:pt-BR: "Engrenagem de configurações"
+    $name:zh-CN: "设置齿轮"
+  $name: "Alternative icons"
+  $name:ru-RU: "Альтернативные иконки"
+  $name:es-ES: "Iconos alternativos"
+  $name:de-DE: "Alternative Symbole"
+  $name:pt-BR: "Ícones alternativos"
+  $name:zh-CN: "替代图标"
+  $description: "Turn off a switch to use the Windows icon in that location"
+  $description:ru-RU: "Выключенный переключатель возвращает иконку Windows"
+  $description:es-ES: "Al desactivar un interruptor, se usa el icono de Windows en esa ubicación"
+  $description:de-DE: "Ein ausgeschalteter Schalter verwendet dort das Windows-Symbol"
+  $description:pt-BR: "Ao desativar uma opção, o ícone do Windows aparece nesse local"
+  $description:zh-CN: "关闭开关后，相应位置将使用 Windows 图标"
+- hiddenApplications: [""]
+  $name: "Hide from the volume mixer"
+  $name:ru-RU: "Скрыть в микшере громкости"
+  $name:es-ES: "Ocultar en el mezclador de volumen"
+  $name:de-DE: "Im Lautstärkemixer ausblenden"
+  $name:pt-BR: "Ocultar no mixer de volume"
+  $name:zh-CN: "在音量合成器中隐藏"
+  $description: "One app per row, by name or executable, for example iCloud or iCloudHome.exe"
+  $description:ru-RU: "По одному названию или имени файла на строку, например iCloud или iCloudHome.exe"
+  $description:es-ES: "Una aplicación por fila, por nombre o archivo ejecutable, por ejemplo, iCloud o iCloudHome.exe"
+  $description:de-DE: "Eine App pro Zeile anhand ihres Namens oder ihrer ausführbaren Datei, etwa iCloud oder iCloudHome.exe"
+  $description:pt-BR: "Um aplicativo por linha, pelo nome ou executável, como iCloud ou iCloudHome.exe"
+  $description:zh-CN: "每行填写一个应用名称或可执行文件名，例如 iCloud 或 iCloudHome.exe"
 */
 // ==/WindhawkModSettings==
 
@@ -141,11 +732,53 @@ in this source file.
 #include <thread>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cwctype>
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 namespace sound {
+inline PCWSTR Text(PCWSTR english, PCWSTR russian, PCWSTR spanish, PCWSTR german,
+                   PCWSTR portuguese, PCWSTR chinese) {
+  switch (PRIMARYLANGID(GetUserDefaultUILanguage())) {
+  case LANG_RUSSIAN: return russian;
+  case LANG_SPANISH: return spanish;
+  case LANG_GERMAN: return german;
+  case LANG_PORTUGUESE: return portuguese;
+  case LANG_CHINESE: return chinese;
+  default: return english;
+  }
+}
+
+enum class QuickShortcut {
+  None, Display, Network, Bluetooth, Apps, Notifications, Graphics, NetworkSettings, Power, Update
+};
+using QuickShortcutSlots = std::array<QuickShortcut, 5>;
+inline QuickShortcut ParseQuickShortcut(std::wstring_view value) {
+  if (value == L"display") return QuickShortcut::Display;
+  if (value == L"network") return QuickShortcut::Network;
+  if (value == L"bluetooth") return QuickShortcut::Bluetooth;
+  if (value == L"apps") return QuickShortcut::Apps;
+  if (value == L"notifications") return QuickShortcut::Notifications;
+  if (value == L"graphics") return QuickShortcut::Graphics;
+  if (value == L"networkSettings") return QuickShortcut::NetworkSettings;
+  if (value == L"power") return QuickShortcut::Power;
+  if (value == L"update") return QuickShortcut::Update;
+  return QuickShortcut::None;
+}
+inline std::vector<QuickShortcut> QuickShortcuts(QuickShortcutSlots const &slots,
+                                                bool displayBelow) {
+  std::vector<QuickShortcut> result;
+  for (auto action : slots)
+    if (action != QuickShortcut::None &&
+        !(action == QuickShortcut::Display && displayBelow) &&
+        std::find(result.begin(), result.end(), action) == result.end())
+      result.push_back(action);
+  return result;
+}
+
 // Adapted from the hidden-applications parser of the Sound Output Direct and
 // Taller Windhawk mod; the only code taken from it.
 // Matching happens before a row is created, so hidden apps occupy no space.
@@ -154,6 +787,11 @@ inline std::wstring Lower(std::wstring value) {
     CharLowerBuffW(value.data(), static_cast<DWORD>(value.size()));
   return value;
 }
+inline void AddHiddenApp(std::vector<std::wstring> &apps, std::wstring_view name) {
+  auto first = name.find_first_not_of(L" \t\r\n");
+  if (first != name.npos)
+    apps.push_back(Lower(std::wstring(name.substr(first, name.find_last_not_of(L" \t\r\n") - first + 1))));
+}
 inline std::vector<std::wstring> ParseHidden(std::wstring const &text) {
   std::vector<std::wstring> result;
   size_t start = 0;
@@ -161,13 +799,33 @@ inline std::vector<std::wstring> ParseHidden(std::wstring const &text) {
     auto end = text.find_first_of(L";,\r\n", start);
     if (end == text.npos)
       end = text.size();
-    auto part = text.substr(start, end - start);
-    auto first = part.find_first_not_of(L" \t");
-    if (first != part.npos)
-      result.push_back(Lower(part.substr(first, part.find_last_not_of(L" \t") - first + 1)));
+    AddHiddenApp(result, std::wstring_view(text).substr(start, end - start));
     start = end + 1;
   }
   return result;
+}
+inline int VolumeWheelStep(int value) {
+  return value >= 1 && value <= 100 ? value : 2;
+}
+struct WheelVolume {
+  int64_t remainder = 0;
+  double Next(double current, double minimum, double maximum, int delta, int step) {
+    auto movement = remainder + int64_t(delta) * step;
+    auto target = current + double(movement / WHEEL_DELTA);
+    remainder = movement % WHEEL_DELTA;
+    if ((target <= minimum && remainder < 0) || (target >= maximum && remainder > 0))
+      remainder = 0;
+    return std::clamp(target, minimum, maximum);
+  }
+};
+// The options contain the selected places in the order listed in the settings.
+inline unsigned IconPlaces(std::wstring_view value, unsigned supported, unsigned defaults) {
+  if (value.size() != 1)
+    return defaults;
+  auto digit = value.front();
+  unsigned mask = digit >= L'0' && digit <= L'9' ? digit - L'0'
+                : digit >= L'a' && digit <= L'f' ? digit - L'a' + 10 : supported + 1;
+  return mask <= supported ? mask : defaults;
 }
 inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const &name,
                    std::wstring const &path) {
@@ -177,7 +835,7 @@ inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const
 }
 inline float Clamp(float value) { return std::clamp(value, 0.f, 1.f); }
 inline int VolumeIcon(float value, bool mute) {
-  return mute || value <= 0 ? 0 : value <= .33f ? 1 : value <= .66f ? 2 : 3;
+  return mute ? -1 : value <= 0 ? 0 : value <= .33f ? 1 : value <= .66f ? 2 : 3;
 }
 struct SavedVolume {
   float last = .5f;
@@ -203,7 +861,7 @@ struct Snapshot {
   unsigned long long revision = 0;
   unsigned long long applied = 0;
 };
-enum class Action { MasterVolume, MasterMute, Input, Refresh };
+enum class Action { MasterVolume, MasterMute, ToggleEndpointMute, Input, Refresh };
 struct Command {
   Action action = Action::Refresh;
   std::wstring id;
@@ -377,7 +1035,7 @@ class Audio final {
   static std::wstring Friendly(IMMDevice *device) {
     winrt::com_ptr<IPropertyStore> props;
     PROPVARIANT value{};
-    std::wstring name = L"Audio device";
+    std::wstring name = Text(L"Audio device", L"Аудиоустройство", L"Dispositivo de audio", L"Audiogerät", L"Dispositivo de áudio", L"音频设备");
     constexpr PROPERTYKEY friendlyKey = {
         {0xa45c254e, 0xdf1c, 0x4efd, {0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0}}, 14};
     if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, props.put())) &&
@@ -388,10 +1046,15 @@ class Audio final {
     }
     return name;
   }
-  std::vector<Device> Devices(EDataFlow flow, std::wstring &defaultId) {
+  std::wstring DefaultDevice(EDataFlow flow) {
     winrt::com_ptr<IMMDevice> current;
-    enumerator_->GetDefaultAudioEndpoint(flow, eMultimedia, current.put());
-    defaultId = Id(current.get());
+    auto result = enumerator_->GetDefaultAudioEndpoint(flow, eMultimedia, current.put());
+    if (result == HRESULT_FROM_WIN32(ERROR_NOT_FOUND))
+      return {};
+    winrt::check_hresult(result);
+    return Id(current.get());
+  }
+  std::vector<Device> Devices(EDataFlow flow, std::wstring const &defaultId) {
     std::vector<Device> result;
     winrt::com_ptr<IMMDeviceCollection> devices;
     winrt::check_hresult(enumerator_->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, devices.put()));
@@ -480,7 +1143,13 @@ class Audio final {
   void Execute(Command const &cmd) {
     error_.clear();
     auto value = Clamp(cmd.value);
-    if (cmd.action == Action::MasterVolume || cmd.action == Action::MasterMute) {
+    if (cmd.action == Action::ToggleEndpointMute) {
+      if (!master_)
+        throw winrt::hresult_error(E_NOTFOUND, L"Output device unavailable");
+      BOOL muted = FALSE;
+      winrt::check_hresult(master_->GetMute(&muted));
+      winrt::check_hresult(master_->SetMute(!muted, nullptr));
+    } else if (cmd.action == Action::MasterVolume || cmd.action == Action::MasterMute) {
       if (!master_)
         throw winrt::hresult_error(E_NOTFOUND, L"Output device unavailable");
       float before = 0;
@@ -508,13 +1177,12 @@ class Audio final {
       SetDefault(cmd.id);
     }
   }
-  void Read() {
+  bool Read() {
     Snapshot state;
     state.revision = ++revision_;
     state.applied = applied_;
     state.error = error_;
-    state.output = Devices(eRender, state.outputId);
-    state.input = Devices(eCapture, state.inputId);
+    state.outputId = DefaultDevice(eRender);
     BindMaster(state.outputId);
     if (master_) {
       BOOL mute = FALSE;
@@ -529,8 +1197,31 @@ class Audio final {
           master_->UnregisterControlChangeNotify(volumeObserver_.get());
         volumeObserver_ = nullptr;
         master_ = nullptr;
+        std::lock_guard lock(volumeFeed_->mutex);
+        volumeFeed_->available = false;
       }
     }
+    bool retry = !state.outputId.empty() && !state.masterAvailable;
+    // The input list and the endpoint volume have independent failure modes.
+    // Publish the current volume even if an endpoint collection is unavailable.
+    for (auto flow : {eRender, eCapture})
+      try {
+        if (flow == eRender)
+          state.output = Devices(flow, state.outputId);
+        else {
+          state.inputId = DefaultDevice(flow);
+          state.input = Devices(flow, state.inputId);
+        }
+      } catch (winrt::hresult_error const &) {
+        retry = true;
+        std::lock_guard lock(mutex_);
+        if (flow == eRender && snapshot_.outputId == state.outputId)
+          state.output = snapshot_.output;
+        else if (flow == eCapture) {
+          state.inputId = snapshot_.inputId;
+          state.input = snapshot_.input;
+        }
+      }
     // The shell's own lists serve output devices, application sessions and
     // spatial sound; this worker serves the added input selector, the master
     // volume and the tray.
@@ -540,6 +1231,7 @@ class Audio final {
     }
     if (publish_)
       publish_();
+    return retry;
   }
   void Run() noexcept {
     bool apartment = false;
@@ -567,8 +1259,9 @@ class Audio final {
           }
           applied_ = cmd.serial;
         }
+        bool retry = true;
         try {
-          Read();
+          retry = Read();
         } catch (winrt::hresult_error const &ex) {
           {
             std::lock_guard lock(mutex_);
@@ -580,9 +1273,13 @@ class Audio final {
             publish_();
         }
         std::unique_lock lock(wake_->mutex);
-        // No polling: endpoint, default-device and master volume changes arrive
-        // as notifications (Notify, VolumeNotify), commands through Send.
-        wake_->cv.wait(lock, [&] { return stop_ || wake_->changed; });
+        auto signalled = [&] { return stop_ || wake_->changed; };
+        // Failed reads and endpoint activation may have no notification to
+        // wake the worker again. Retry only until the audio state recovers.
+        if (retry)
+          wake_->cv.wait_for(lock, std::chrono::seconds(1), signalled);
+        else
+          wake_->cv.wait(lock, signalled);
         wake_->changed = false;
       }
       enumerator_->UnregisterEndpointNotificationCallback(observer.get());
@@ -737,8 +1434,35 @@ namespace D = X::Data;
 using winrt::Windows::Foundation::IInspectable;
 inline std::atomic<bool> stopping = false;
 inline HMODULE module = nullptr;
-inline std::vector<std::wstring> hidden;
+struct ModSettings {
+  std::vector<std::wstring> hidden;
+  bool brightnessEnabled = true;
+  int quickActionRows = 2;
+  sound::QuickShortcutSlots quickShortcuts{};
+  bool quickSoundAccess = true, trayMiddleClickMute = false;
+  int volumeWheelStep = 2;
+  bool altQuickMixer = true, altSoundMixer = true, altTrayVolume = true,
+       altTrayEthernet = true, altQuickVolume = true, altSoundVolume = true,
+       altAppUnmute = true, altSoundGear = true;
+  bool operator==(ModSettings const &) const = default;
+};
+inline std::mutex settingsMutex;
+inline ModSettings modSettings;
+inline ModSettings SettingsSnapshot() {
+  std::lock_guard lock(settingsMutex);
+  return modSettings;
+}
 inline UINT volumePulseMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.VolumePulse.1");
+inline UINT soundShownMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.SoundShown.1");
+inline constexpr WCHAR soundRequestProperty[] = L"Windhawk.NativeSound.SoundRequest.1";
+inline constexpr WCHAR soundPageProperty[] = L"Windhawk.NativeSound.SoundPage.1";
+inline constexpr UINT_PTR SoundRequestToken(ULONGLONG now, UINT_PTR sequence) {
+  return static_cast<UINT_PTR>(now << 16) | (sequence & 0xffff);
+}
+inline constexpr bool SoundEventMatchesRequest(UINT_PTR token, DWORD shownAt) {
+  // WinEvent timestamps wrap at 32 bits. A request only lives for 1.2 seconds.
+  return static_cast<LONG>(shownAt - static_cast<DWORD>(token >> 16)) >= 0;
+}
 // Used only while unloading. Wait for the asynchronous operation itself,
 // not an event set inside its delegate: the DLL must outlive the delegate's return.
 inline bool DispatchCleanup(winrt::Windows::UI::Core::CoreDispatcher const &dispatcher,
@@ -852,13 +1576,18 @@ inline C::FontIcon SymbolGlyph(X::FrameworkElement const &owner, wchar_t code, d
   icon.IsHitTestVisible(false);
   return icon;
 }
-inline C::FontIcon VolumeGlyph(X::FrameworkElement const &owner, int level, double size = 16) {
-  return SymbolGlyph(owner,
-                     level == 0   ? 0xe74f
-                     : level == 1 ? 0xe993
-                     : level == 2 ? 0xe994
-                                  : 0xe995,
-                     size);
+inline X::UIElement VolumeGlyph(X::FrameworkElement const &owner, int level, double size = 16) {
+  auto active = SymbolGlyph(owner, level < 0 ? 0xe74f : 0xe992 + level, size);
+  if (level < 0 || level == 3)
+    return active;
+  // The Windows symbol font provides the waves separately as VolumeBars.
+  auto waves = SymbolGlyph(owner, 0xebc5, size);
+  waves.Opacity(.35);
+  C::Grid icon;
+  icon.IsHitTestVisible(false);
+  icon.Children().Append(waves);
+  icon.Children().Append(active);
+  return icon;
 }
 // Built in code: XamlReader::Load ran several times per Sound opening (pickers,
 // input rows, master row), and parsed XAML stays registered with XAML Diagnostics.
@@ -1382,7 +2111,200 @@ public:
 
 
 
+#include <optional>
 namespace native {
+// Draw the same value over the panel for both wheel and thumb gestures.
+class VolumeToolTip {
+  C::Grid host_{nullptr};
+  C::Canvas overlay_{nullptr};
+  C::Border plate_{nullptr};
+  C::TextBlock label_{nullptr};
+  X::DispatcherTimer timer_{nullptr};
+  X::DispatcherTimer::Tick_revoker tick_;
+  X::FrameworkElement::Unloaded_revoker unloaded_;
+  X::FrameworkElement::LayoutUpdated_revoker layout_;
+  C::Slider slider_{nullptr};
+  std::optional<uint32_t> pointer_;
+
+  void Position() {
+    auto thumb = Named(slider_, L"HorizontalThumb");
+    auto anchor = thumb ? thumb : slider_.as<X::FrameworkElement>();
+    auto point = anchor.TransformToVisual(host_).TransformPoint(
+        {float(anchor.ActualWidth() / 2), 0});
+    plate_.Measure({INFINITY, INFINITY});
+    auto size = plate_.DesiredSize();
+    auto left = std::clamp(point.X - size.Width / 2, 0.f,
+                           std::max(0.f, float(host_.ActualWidth()) - size.Width));
+    auto top = std::max(0.f, point.Y - size.Height - 4);
+    auto previousLeft = C::Canvas::GetLeft(plate_);
+    auto previousTop = C::Canvas::GetTop(plate_);
+    if (!std::isfinite(previousLeft) || std::abs(previousLeft - left) > .25)
+      C::Canvas::SetLeft(plate_, left);
+    if (!std::isfinite(previousTop) || std::abs(previousTop - top) > .25)
+      C::Canvas::SetTop(plate_, top);
+  }
+
+public:
+  void Hide() noexcept {
+    pointer_.reset();
+    if (timer_)
+      try {
+        timer_.Stop();
+      } catch (...) {
+        Wh_Log(L"VolumeTooltipTimerStopError %08X", winrt::to_hresult());
+      }
+    unloaded_.revoke();
+    layout_.revoke();
+    slider_ = nullptr;
+    if (host_)
+      try {
+        uint32_t index;
+        if (host_.Children().IndexOf(overlay_, index))
+          host_.Children().RemoveAt(index);
+      } catch (...) {
+        Wh_Log(L"VolumeTooltipCloseError %08X", winrt::to_hresult());
+      }
+    host_ = nullptr;
+  }
+  void Show(X::FrameworkElement const &page, C::Slider const &slider, double value) {
+    if (!slider.XamlRoot())
+      return;
+    if (!overlay_) {
+      overlay_ = C::Canvas();
+      overlay_.IsHitTestVisible(false);
+      C::Canvas::SetZIndex(overlay_, 100);
+      plate_ = C::Border();
+      plate_.IsHitTestVisible(false);
+      plate_.CornerRadius({4, 4, 4, 4});
+      plate_.Padding({8, 4, 8, 4});
+      plate_.BorderThickness({1, 1, 1, 1});
+      label_ = C::TextBlock();
+      label_.FontSize(12);
+      plate_.Child(label_);
+      overlay_.Children().Append(plate_);
+    }
+    if (slider_ != slider) {
+      Hide();
+      C::Grid host{nullptr};
+      for (auto ancestor = Parent(slider); ancestor; ancestor = Parent(ancestor)) {
+        if (auto grid = ancestor.try_as<C::Grid>())
+          host = grid;
+        if (ancestor == page)
+          break;
+      }
+      if (!host)
+        return;
+      host_ = host;
+      C::Grid::SetRowSpan(overlay_, std::max(1u, host_.RowDefinitions().Size()));
+      C::Grid::SetColumnSpan(overlay_, std::max(1u, host_.ColumnDefinitions().Size()));
+      host_.Children().Append(overlay_);
+      slider_ = slider;
+      unloaded_ = slider.Unloaded(winrt::auto_revoke, [this](auto &&, auto &&) { Hide(); });
+      layout_ = slider.LayoutUpdated(winrt::auto_revoke, [this](auto &&, auto &&) {
+        try {
+          if (slider_ && host_)
+            Position();
+        } catch (...) {
+          Hide();
+        }
+      });
+      const auto dark = DarkTheme(slider);
+      const auto themedBrush = [&](PCWSTR key, uint8_t shade) {
+        auto brush = Resource(slider, key).try_as<M::Brush>();
+        if (!brush)
+          brush = M::SolidColorBrush(winrt::Windows::UI::Color{255, shade, shade, shade});
+        return brush;
+      };
+      plate_.Background(themedBrush(L"ToolTipBackground", dark ? 44 : 250));
+      plate_.BorderBrush(themedBrush(L"ToolTipBorderBrush", dark ? 85 : 220));
+      label_.Foreground(themedBrush(L"ToolTipForeground", dark ? 255 : 26));
+    }
+    auto content = std::to_wstring(std::lround(value));
+    if (auto converter = slider.ThumbToolTipValueConverter())
+      try {
+        if (auto converted = converter.Convert(winrt::box_value(value),
+                                               winrt::xaml_typename<winrt::hstring>(), nullptr,
+                                               L""))
+          if (auto convertedText = String(converted); !convertedText.empty())
+            content = std::move(convertedText);
+      } catch (...) {
+      }
+    label_.Text(content);
+    Position();
+    if (!timer_) {
+      timer_ = X::DispatcherTimer();
+      timer_.Interval(std::chrono::milliseconds(900));
+      tick_ = timer_.Tick(winrt::auto_revoke, [this](auto &&, auto &&) { Hide(); });
+    }
+    timer_.Stop();
+    if (!pointer_)
+      timer_.Start();
+  }
+  void Watch(X::FrameworkElement const &page, C::Slider const &slider, Journal &journal,
+             std::vector<std::function<void()>> &revoke) {
+    auto listen = [&](X::RoutedEvent const &event, X::Input::PointerEventHandler const &callback) {
+      auto handler = winrt::box_value(callback);
+      slider.AddHandler(event, handler, true);
+      revoke.push_back([slider, event, handler] { slider.RemoveHandler(event, handler); });
+    };
+    auto weakPage = winrt::make_weak(page);
+    listen(X::UIElement::PointerPressedEvent(),
+           [this, weakPage](IInspectable const &sender, X::Input::PointerRoutedEventArgs const &args) {
+             try {
+               auto slider = sender.as<C::Slider>();
+               auto point = args.GetCurrentPoint(slider);
+               if (!slider.IsEnabled() || !point.Properties().IsLeftButtonPressed())
+                 return;
+               if (auto page = weakPage.get()) {
+                 Show(page, slider, slider.Value());
+                 if (slider_ == slider) {
+                   pointer_ = point.PointerId();
+                   timer_.Stop();
+                 }
+               }
+             } catch (...) {
+               Hide();
+             }
+           });
+    X::Input::PointerEventHandler finish =
+        [this](IInspectable const &sender, X::Input::PointerRoutedEventArgs const &args) {
+          try {
+            if (pointer_ && sender == slider_ && *pointer_ == args.Pointer().PointerId()) {
+              pointer_.reset();
+              timer_.Start();
+            }
+          } catch (...) {
+            Hide();
+          }
+        };
+    listen(X::UIElement::PointerReleasedEvent(), finish);
+    listen(X::UIElement::PointerCanceledEvent(), finish);
+    listen(X::UIElement::PointerCaptureLostEvent(), finish);
+    auto changed = slider.ValueChanged(
+        winrt::auto_revoke, [this, weakPage](IInspectable const &sender, auto const &args) {
+          try {
+            if (pointer_ && sender == slider_)
+              if (auto page = weakPage.get())
+                Show(page, slider_, args.NewValue());
+          } catch (...) {
+            Hide();
+          }
+        });
+    auto revoker = std::make_shared<decltype(changed)>(std::move(changed));
+    revoke.push_back([revoker] { revoker->revoke(); });
+    journal.Save(slider, C::Slider::IsThumbToolTipEnabledProperty());
+    slider.IsThumbToolTipEnabled(false);
+  }
+};
+
+inline void ListenVolumeWheel(C::Slider const &slider, X::Input::PointerEventHandler const &callback,
+                              std::vector<std::function<void()>> &revoke) {
+  auto event = X::UIElement::PointerWheelChangedEvent();
+  auto handler = winrt::box_value(callback);
+  slider.AddHandler(event, handler, true);
+  revoke.push_back([slider, event, handler] { slider.RemoveHandler(event, handler); });
+}
+
 // Thin slider look shared by the Sound page and Quick Settings:
 // 1 DIP rail, 4 DIP value bar with rounded ends, thumb invisible until hover,
 // drag or keyboard focus. The rail and the bar run from the thumb centre at 0
@@ -1874,7 +2796,10 @@ inline void Leave(X::FrameworkElement const &snapshot, X::FrameworkElement const
 #include <winrt/Windows.UI.Xaml.Automation.Peers.h>
 #include <winrt/Windows.UI.Xaml.Automation.Provider.h>
 namespace native {
+enum class MenuKind { Output, Input, Spatial };
+
 struct Menu {
+  MenuKind kind;
   C::Button button{nullptr};
   C::TextBlock label{nullptr};
   C::FontIcon endpointIcon{nullptr};
@@ -1888,10 +2813,12 @@ struct AppRow {
   winrt::weak_ref<C::Grid> root;
   winrt::weak_ref<C::Slider> slider;
   winrt::weak_ref<P::ToggleButton> toggle;
-  C::Border badge{nullptr};
   C::TextBlock level{nullptr};
   C::Button levelButton{nullptr}, levelMute{nullptr};
+  Journal badgeJournal;
+  bool alternateMute = false;
   std::shared_ptr<AnimatedVolume> levelIcon;
+  sound::WheelVolume wheel;
   double last = 50, before = 0, expected = NAN;
   ULONGLONG verifyAt = 0;
   IInspectable model{nullptr};
@@ -1907,7 +2834,7 @@ struct AppRow {
 inline sound::Snapshot lastAudio;
 inline bool soundOpenedOnce = false;
 class SoundPage {
-  X::FrameworkElement page_{nullptr}, outputAnchor_{nullptr}, frame_{nullptr};
+  X::FrameworkElement page_{nullptr}, frame_{nullptr};
   Journal journal_;
   // L2Frame outlives the page (it hosts every Sound page): its changes are kept
   // apart so an abandoned page still gives the frame its native height back.
@@ -1922,6 +2849,9 @@ class SoundPage {
   C::Button mixerButton_{nullptr};
   X::FrameworkElement arrow_{nullptr};
   C::StackPanel inputBlock_{nullptr};
+  C::Button mixerSettings_{nullptr}, soundSettings_{nullptr};
+  Journal gearJournal_;
+  ModSettings settings_;
   std::shared_ptr<Menu> input_;
   C::Slider master_{nullptr};
   C::Button masterIcon_{nullptr};
@@ -1929,12 +2859,14 @@ class SoundPage {
   C::Border footerBorder_{nullptr};
   X::Style pickerBase_{nullptr};
   std::shared_ptr<AnimatedVolume> masterAnimation_;
+  sound::WheelVolume masterWheel_;
+  VolumeToolTip volumeTip_;
   std::function<void()> volumeChanged_;
   bool preparing_ = false, prepared_ = false, rowsDirty_ = true;
   std::vector<std::pair<winrt::weak_ref<C::TextBlock>, M::TranslateTransform>> textBaselines_;
   sound::Audio audio_;
   bool sync_ = false, expanded_ = true, restoring_ = false;
-  int glyph_ = -1;
+  int glyph_ = -2;
   std::wstring inputSignature_;
   sound::Snapshot latest_;
   unsigned long long pending_ = 0;
@@ -1991,11 +2923,16 @@ class SoundPage {
   // Settings gear: it turns while the button is held.
   void SettingsGear(C::Button const &button) {
     try {
+      gearJournal_.Restore();
       if (auto style = Resource(page_, L"FooterIconButtonStyle").try_as<X::Style>()) {
         button.Style(style);
         button.Width(36);
         button.Height(36);
         button.Margin({-2, -2, -2, -2});
+      }
+      if (!settings_.altSoundGear) {
+        button.Content(SymbolGlyph(page_, 0xe713, 16));
+        return;
       }
       auto factory = NativeAnimatedFactory();
       IInspectable inner{nullptr};
@@ -2015,7 +2952,7 @@ class SoundPage {
             } catch (...) {
             }
           });
-      revoke_.push_back([button, statics, token] {
+      gearJournal_.undo.push_back([button, statics, token] {
         button.UnregisterPropertyChangedCallback(statics.StateProperty(), token);
       });
     } catch (...) {
@@ -2244,8 +3181,7 @@ class SoundPage {
                 winrt::box_value(X::Thickness{menu == input_ ? 8. : 0., 0, 0, 0}));
             Set(text, X::FrameworkElement::VerticalAlignmentProperty(),
                 winrt::box_value(X::VerticalAlignment::Center));
-          } else if (!wcscmp(X::Automation::AutomationProperties::GetName(menu->button).c_str(),
-                             L"Output device") &&
+           } else if (menu->kind == MenuKind::Output &&
                      text.Text().size() == 1 && Parent(text).template try_as<C::Grid>() &&
                      Parent(text).template as<C::Grid>().ColumnDefinitions().Size() == 3) {
             Set(text, X::FrameworkElement::WidthProperty(), winrt::box_value(16.));
@@ -2344,8 +3280,6 @@ class SoundPage {
       frame_.Height(target);
     }
   }
-  // No custom value tooltip: the native Slider thumb tooltip is the only one
-  // (IsThumbToolTipEnabled), as in the stock shell.
   void Add(C::Panel const &parent, X::UIElement const &child, uint32_t index = UINT_MAX) {
     parent.Children().InsertAt(std::min(index, parent.Children().Size()), child);
     journal_.undo.push_back([parent, child] {
@@ -2366,14 +3300,13 @@ class SoundPage {
           if (auto title = Named(container, L"TitleText").try_as<C::TextBlock>())
             text = title.Text();
     }
-    if (text.empty() && X::Automation::AutomationProperties::GetName(m->button) == L"Output device")
+    if (text.empty() && m->kind == MenuKind::Output)
       for (auto const &device : latest_.output)
         if (device.current) {
           text = device.name;
           break;
         }
-    if (m->endpointIcon &&
-        X::Automation::AutomationProperties::GetName(m->button) == L"Output device") {
+    if (m->endpointIcon && m->kind == MenuKind::Output) {
       auto code = String(ModelValue(selected, L"EndpointIcon"));
       if (code.size() == 1)
         m->endpointIcon.Glyph(code);
@@ -2395,8 +3328,10 @@ class SoundPage {
     m->label.Text(text.empty() ? L"—" : text);
     m->button.IsEnabled(m->list.IsEnabled() && m->list.Items().Size() > 0);
   }
-  std::shared_ptr<Menu> Picker(X::FrameworkElement const &owner, PCWSTR name) {
+  std::shared_ptr<Menu> Picker(X::FrameworkElement const &owner, MenuKind kind,
+                               winrt::hstring const &nativeName = {}) {
     auto m = std::make_shared<Menu>();
+    m->kind = kind;
     m->button = C::Button();
     m->button.Height(32);
     m->button.MinHeight(32);
@@ -2405,15 +3340,18 @@ class SoundPage {
     m->button.Margin({20, 0, 20, 18});
     m->button.HorizontalAlignment(X::HorizontalAlignment::Stretch);
     m->button.HorizontalContentAlignment(X::HorizontalAlignment::Stretch);
-    X::Automation::AutomationProperties::SetName(m->button, name);
+    auto name = kind == MenuKind::Input ? sound::Text(L"Input device", L"Устройство ввода", L"Dispositivo de entrada", L"Eingabegerät", L"Dispositivo de entrada", L"输入设备")
+              : kind == MenuKind::Spatial ? sound::Text(L"Spatial sound", L"Пространственный звук", L"Sonido espacial", L"Raumklang", L"Som espacial", L"空间音效")
+                                          : sound::Text(L"Output device", L"Устройство вывода", L"Dispositivo de salida", L"Ausgabegerät", L"Dispositivo de saída", L"输出设备");
+    X::Automation::AutomationProperties::SetName(m->button, nativeName.empty() ? name : nativeName.c_str());
     m->button.VerticalContentAlignment(X::VerticalAlignment::Center);
     auto g = Grid(L"17,*,12");
-    if (!wcscmp(name, L"Spatial sound")) {
+    if (kind == MenuKind::Spatial) {
       auto phones = SymbolGlyph(owner, 0xe7f6, 16);
       phones.Margin({0, -buttonGlyphRaise, 0, buttonGlyphRaise});
       g.Children().Append(phones);
     } else {
-      m->endpointIcon = SymbolGlyph(owner, !wcscmp(name, L"Input device") ? 0xe720 : 0xe7f5);
+      m->endpointIcon = SymbolGlyph(owner, kind == MenuKind::Input ? 0xe720 : 0xe7f5);
       m->endpointIcon.Margin({0, -buttonGlyphRaise, 0, buttonGlyphRaise});
       g.Children().Append(m->endpointIcon);
     }
@@ -2494,15 +3432,22 @@ class SoundPage {
     Set(list, C::ScrollViewer::VerticalScrollBarVisibilityProperty(),
         winrt::box_value(C::ScrollBarVisibility::Auto));
   }
-  void ConvertList(C::ListView const &list, PCWSTR title) {
+  void ConvertList(C::ListView const &list, MenuKind kind, C::TextBlock const &heading) {
     auto parent = Parent(list).as<C::Panel>();
     uint32_t index = 0;
     if (!parent.Children().IndexOf(list, index))
       throw winrt::hresult_error(E_UNEXPECTED);
-    auto m = Picker(parent, title);
+    auto m = Picker(parent, kind, heading.Text());
     m->list = list;
-    journal_.Save(list, X::FrameworkElement::DataContextProperty());
-    list.DataContext(list.DataContext());
+    auto context = X::FrameworkElement::DataContextProperty();
+    if (list.ReadLocalValue(context) == X::DependencyProperty::UnsetValue()) {
+      journal_.Save(list, context);
+      D::Binding inherited;
+      inherited.Mode(D::BindingMode::OneWay);
+      inherited.Source(parent);
+      inherited.Path(X::PropertyPath(L"DataContext"));
+      list.SetBinding(context, inherited);
+    }
     journal_.Save(list, X::FrameworkElement::WidthProperty());
     journal_.Save(list, X::FrameworkElement::MaxHeightProperty());
     Compact(list);
@@ -2526,12 +3471,12 @@ class SoundPage {
     inputBlock_.BorderThickness({0, 1, 0, 0});
     PaintDivider(inputBlock_, parent);
     C::TextBlock heading;
-    heading.Text(L"Input device");
+    heading.Text(sound::Text(L"Input device", L"Устройство ввода", L"Dispositivo de entrada", L"Eingabegerät", L"Dispositivo de entrada", L"输入设备"));
     heading.FontWeight({600});
     TextLine(heading, 19.6);
     heading.Margin({20, 10, 20, HeadingBottom()});
     inputBlock_.Children().Append(heading);
-    input_ = Picker(parent, L"Input device");
+    input_ = Picker(parent, MenuKind::Input);
     input_->list = C::ListView();
     input_->list.SelectionMode(C::ListViewSelectionMode::Single);
     input_->list.IsItemClickEnabled(true);
@@ -2614,9 +3559,13 @@ class SoundPage {
       inputSignature_ = signature;
     }
     C::ListViewItem selected{nullptr};
+    winrt::hstring label = sound::Text(
+        L"No input device selected", L"Устройство ввода не выбрано",
+        L"Ningún dispositivo de entrada seleccionado", L"Kein Eingabegerät ausgewählt",
+        L"Nenhum dispositivo de entrada selecionado", L"未选择输入设备");
     for (auto const &device : state.input)
       if (device.current) {
-        input_->label.Text(device.name);
+        label = winrt::hstring(device.name);
         for (auto const &entry : input_->list.Items())
           if (auto item = entry.try_as<C::ListViewItem>();
               item && String(item.Tag()) == device.id) {
@@ -2625,7 +3574,9 @@ class SoundPage {
           }
         break;
       }
-    if (selected && input_->list.SelectedItem() != selected)
+    if (input_->label.Text() != label)
+      input_->label.Text(label);
+    if (input_->list.SelectedItem() != selected)
       input_->list.SelectedItem(selected);
     input_->button.IsEnabled(!state.input.empty());
     if (pendingInput_ && state.applied >= pendingInput_) {
@@ -2703,7 +3654,12 @@ class SoundPage {
       settings.MinHeight(0);
       settings.Padding({0, 0, 0, 0});
       settings.Margin({0, 11, 20, 0});
-      settings.Content(Icon(L"sliders-horizontal"));
+      auto name = winrt::box_value(sound::Text(L"Volume", L"Громкость", L"Volumen",
+                                               L"Lautstärke", L"Volume", L"音量"));
+      Set(settings, X::Automation::AutomationProperties::NameProperty(), name);
+      Set(settings, C::ToolTipService::ToolTipProperty(), name);
+      mixerSettings_ = settings;
+      MixerSettingsIcon();
     }
     journal_.Save(mixerList_, X::UIElement::VisibilityProperty());
     journal_.Save(mixerList_, X::FrameworkElement::HeightProperty());
@@ -2738,6 +3694,15 @@ class SoundPage {
     Set(mixerList_, C::Control::PaddingProperty(), winrt::box_value(X::Thickness{}));
     Set(mixerList_, X::FrameworkElement::MarginProperty(), winrt::box_value(X::Thickness{}));
   }
+  void MixerSettingsIcon() {
+    if (!mixerSettings_)
+      return;
+    if (settings_.altSoundMixer)
+      mixerSettings_.Content(Icon(L"sliders-horizontal"));
+    else
+      // SystemSettings_Audio_MixerLink uses the Segoe Fluent Volume3 glyph.
+      mixerSettings_.Content(SymbolGlyph(page_, 0xe995));
+  }
   void ApplyExpanded(bool animate) {
     if (holding_) {
       holding_ = false;
@@ -2755,8 +3720,12 @@ class SoundPage {
       arrow_.RenderTransform(rotation);
     }
     arrowStart_ = rotation.Angle();
-    X::Automation::AutomationProperties::SetHelpText(mixerButton_,
-                                                     expanded_ ? L"Expanded" : L"Collapsed");
+    X::Automation::AutomationProperties::SetHelpText(
+        mixerButton_, expanded_
+                          ? sound::Text(L"Expanded", L"Развернут", L"Expandido", L"Erweitert",
+                                        L"Expandido", L"已展开")
+                          : sound::Text(L"Collapsed", L"Свернут", L"Contraído", L"Eingeklappt",
+                                        L"Recolhido", L"已折叠"));
     if (!animate || !winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) {
       hideUnnamed_ = false;
       rotation.Angle(expanded_ ? 180 : 0);
@@ -2951,7 +3920,7 @@ class SoundPage {
               X::Media::Animation::TransitionCollection());
         }
         journal_.Save(container, X::UIElement::VisibilityProperty());
-        container.Visibility(sound::Hidden(hidden, name, L"") ? X::Visibility::Collapsed
+        container.Visibility(sound::Hidden(settings_.hidden, name, L"") ? X::Visibility::Collapsed
                                                               : X::Visibility::Visible);
         journal_.Save(container, X::UIElement::OpacityProperty());
         container.Opacity(unnamed && hideUnnamed_ ? 0 : 1);
@@ -3013,14 +3982,17 @@ class SoundPage {
     footer_ = Grid(L"32,*,32");
     footer_.Name(L"NativeSoundMasterRow");
     FooterMargins();
-    masterIcon_ = Button(page_, L"Mute system volume");
+    masterIcon_ = Button(page_, sound::Text(L"Turn sound on or off", L"Включить или выключить звук",
+                          L"Activar o desactivar el sonido", L"Ton ein- oder ausschalten",
+                          L"Ativar ou desativar o som", L"打开或关闭声音"));
     masterIcon_.Content(VolumeGlyph(page_, 3));
-    try {
-      masterAnimation_ = std::make_shared<AnimatedVolume>();
-      masterIcon_.Content(masterAnimation_->Isolated());
-    } catch (...) {
-      Wh_Log(L"MasterAnimationError %08X", winrt::to_hresult());
-    }
+    if (settings_.altSoundVolume)
+      try {
+        masterAnimation_ = std::make_shared<AnimatedVolume>();
+        masterIcon_.Content(masterAnimation_->Isolated());
+      } catch (...) {
+        Wh_Log(L"MasterAnimationError %08X", winrt::to_hresult());
+      }
     footer_.Children().Append(masterIcon_);
     master_ = C::Slider();
     master_.Style(sliderStyle);
@@ -3030,11 +4002,13 @@ class SoundPage {
     master_.Margin({12, 0, 12, 0});
     master_.Maximum(100);
     master_.StepFrequency(1);
-    master_.IsThumbToolTipEnabled(true);
     C::Grid::SetColumn(master_, 1);
     footer_.Children().Append(master_);
-    X::Automation::AutomationProperties::SetName(master_, L"System volume");
-    auto settings = Button(page_, L"More volume settings");
+    X::Automation::AutomationProperties::SetName(master_, sound::Text(L"System volume", L"Общая громкость", L"Volumen del sistema", L"Systemlautstärke", L"Volume do sistema", L"系统音量"));
+    auto settings = Button(page_, sound::Text(L"Sound settings", L"Параметры звука",
+                           L"Configuración de sonido", L"Soundeinstellungen",
+                           L"Configurações de som", L"声音设置"));
+    soundSettings_ = settings;
     SettingsGear(settings);
     C::Grid::SetColumn(settings, 2);
     footer_.Children().Append(settings);
@@ -3052,24 +4026,30 @@ class SoundPage {
         MasterGlyph(value, value <= 0);
       }
     }));
-    Keep(master_.PointerWheelChanged(
-        winrt::auto_revoke, [this](auto &&, X::Input::PointerRoutedEventArgs const &args) {
+    volumeTip_.Watch(page_, master_, journal_, revoke_);
+    ListenVolumeWheel(
+        master_, [this](auto &&, X::Input::PointerRoutedEventArgs const &args) {
           try {
-            if (args.Handled() || !master_.IsEnabled())
+            if (!master_.IsEnabled())
               return;
             auto point = args.GetCurrentPoint(master_);
             if (point.Properties().IsHorizontalMouseWheel())
               return;
-            double delta = point.Properties().MouseWheelDelta() / 120.;
+            int delta = point.Properties().MouseWheelDelta();
             if (!delta)
               return;
-            master_.Value(std::clamp(master_.Value() + delta * master_.SmallChange(),
-                                     master_.Minimum(), master_.Maximum()));
+            if (args.Handled()) {
+              volumeTip_.Show(page_, master_, master_.Value());
+              return;
+            }
             args.Handled(true);
+            master_.Value(masterWheel_.Next(master_.Value(), master_.Minimum(),
+                                           master_.Maximum(), delta, settings_.volumeWheelStep));
+            volumeTip_.Show(page_, master_, master_.Value());
           } catch (...) {
             Wh_Log(L"MasterWheelError %08X", winrt::to_hresult());
           }
-        }));
+        }, revoke_);
     Keep(masterIcon_.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
       pending_ = audio_.Send({sound::Action::MasterMute});
     }));
@@ -3078,7 +4058,7 @@ class SoundPage {
 public:
   explicit SoundPage(X::FrameworkElement const &page, HWND host,
                      std::function<void()> volumeChanged)
-      : page_(page), host_(host),
+      : page_(page), host_(host), settings_(SettingsSnapshot()),
         volumeChanged_(std::move(volumeChanged)) {}
   void MasterGlyph(float value, bool muted) {
     if (masterAnimation_)
@@ -3088,7 +4068,7 @@ public:
       } catch (...) {
         Wh_Log(L"MasterAnimationError %08X", winrt::to_hresult());
         masterAnimation_.reset();
-        glyph_ = -1;
+        glyph_ = -2;
       }
     int glyph = sound::VolumeIcon(value, muted);
     if (glyph != glyph_) {
@@ -3099,6 +4079,34 @@ public:
   void RefreshMasterNow() {
     if (master_ && page_.IsLoaded())
       ApplyMaster(State());
+  }
+  void ApplySettings(ModSettings const &next) {
+    auto previous = std::exchange(settings_, next);
+    if (previous.altSoundMixer != next.altSoundMixer)
+      MixerSettingsIcon();
+    if (soundSettings_ && previous.altSoundGear != next.altSoundGear)
+      SettingsGear(soundSettings_);
+    if (masterIcon_ && previous.altSoundVolume != next.altSoundVolume) {
+      masterAnimation_.reset();
+      glyph_ = -2;
+      if (next.altSoundVolume)
+        try {
+          masterAnimation_ = std::make_shared<AnimatedVolume>();
+          masterIcon_.Content(masterAnimation_->Isolated());
+        } catch (...) {
+          Wh_Log(L"MasterAnimationError %08X", winrt::to_hresult());
+        }
+      auto state = State();
+      MasterGlyph(state.master, state.muted);
+    }
+    if (previous.altAppUnmute != next.altAppUnmute)
+      for (auto const &row : rows_)
+        if (auto slider = row->slider.get()) {
+          SetAppMuteIcon(*row, slider);
+          ShowLevel(*row, slider.Value());
+        }
+    if (previous.hidden != next.hidden)
+      rowsDirty_ = true;
   }
   sound::Snapshot State() {
     auto s = audio_.Get();
@@ -3132,9 +4140,10 @@ public:
       MasterGlyph(state.master, state.muted);
   }
   X::FrameworkElement Page() const { return page_; }
-  bool Alive() const {
-    return page_ && page_.IsLoaded() && outputAnchor_ && outputAnchor_.IsLoaded() &&
-           Named(page_, L"OutputGroupTitle") == outputAnchor_;
+  bool Loaded() const {
+    // Headings live in a virtualized list and may unload while the footer
+    // and other controls are still active.
+    return page_ && page_.IsLoaded();
   }
   bool Apply() {
     auto outputTitle = Named(page_, L"OutputGroupTitle");
@@ -3158,7 +4167,6 @@ public:
           return border && border.BorderThickness().Top > 0;
         }))
       return false;
-    outputAnchor_ = outputTitle;
     if (auto original = output.ItemContainerStyle())
       pickerBase_ = original.BasedOn();
     for (auto heading : {outputTitle, spatialTitle, mixer})
@@ -3171,9 +4179,9 @@ public:
       heading.Margin({20, 10, 20, HeadingBottom()});
       TextLine(heading.as<C::TextBlock>(), 19.6);
     }
-    ConvertList(output, L"Output device");
+    ConvertList(output, MenuKind::Output, outputTitle.as<C::TextBlock>());
     Input(Parent(outputTitle).as<C::Panel>());
-    ConvertList(spatial, L"Spatial sound");
+    ConvertList(spatial, MenuKind::Spatial, spatialTitle.as<C::TextBlock>());
     Mixer();
     Master(oldFooter, style);
     if (auto back = Named(page_, L"BackButton").try_as<C::Button>()) {
@@ -3280,7 +4288,7 @@ public:
     for (auto name : {L"PageTitleText", L"PageTitle"})
       if (auto t = Named(page_, name).try_as<C::TextBlock>()) {
         journal_.Save(t, C::TextBlock::TextProperty());
-        t.Text(L"Sound");
+        t.Text(sound::Text(L"Sound", L"Звук", L"Sonido", L"Sound", L"Som", L"声音"));
         TextLine(t, 19.6);
       }
     journal_.Save(page_, X::FrameworkElement::HeightProperty());
@@ -3350,14 +4358,14 @@ public:
   // First opening in a shell session: the native view models load asynchronously
   // ("No output devices found", empty Spatial/VM, then the panel grows). Keep the
   // page content transparent until the data and VM rows are present, max 300 ms.
-  std::shared_ptr<Menu> MenuNamed(PCWSTR name) {
+  std::shared_ptr<Menu> MenuFor(MenuKind kind) {
     for (auto const &m : menus_)
-      if (X::Automation::AutomationProperties::GetName(m->button) == name)
+      if (m->kind == kind)
         return m;
     return nullptr;
   }
   bool DataReady(bool rows) {
-    auto out = MenuNamed(L"Output device"), spatial = MenuNamed(L"Spatial sound");
+    auto out = MenuFor(MenuKind::Output), spatial = MenuFor(MenuKind::Spatial);
     if (!out || !out->list.Items().Size() || !out->list.SelectedItem())
       return false;
     // The shell first selects a provisional endpoint (seen: Steam Streaming
@@ -3821,15 +4829,44 @@ public:
     if (row.level)
       row.level.Text(std::to_wstring(n));
     if (row.levelButton) {
-      row.levelButton.Visibility(n <= 0 ? X::Visibility::Collapsed : X::Visibility::Visible);
+      row.levelButton.Visibility(n <= 0 && row.alternateMute ? X::Visibility::Collapsed
+                                                       : X::Visibility::Visible);
       // At 100 the button is disabled rather than taken out of hit testing: a
       // hit-test change under the pointer leaves the button's pointer-over state
       // set, and its hover plate came back on the next visual state update.
-      if (row.levelButton.IsEnabled() != (n < 100))
-        row.levelButton.IsEnabled(n < 100);
+      bool enabled = n > 0 && n < 100;
+      if (row.levelButton.IsEnabled() != enabled)
+        row.levelButton.IsEnabled(enabled);
     }
     if (row.levelMute)
-      row.levelMute.Visibility(n <= 0 ? X::Visibility::Visible : X::Visibility::Collapsed);
+      row.levelMute.Visibility(n <= 0 && row.alternateMute ? X::Visibility::Visible
+                                                          : X::Visibility::Collapsed);
+  }
+  void SetAppMuteIcon(AppRow &row, C::Slider const &slider) {
+    row.alternateMute = settings_.altAppUnmute;
+    row.badgeJournal.Restore();
+    if (!row.alternateMute)
+      return;
+    if (!row.levelIcon && row.levelMute)
+      try {
+        row.levelIcon = std::make_shared<AnimatedVolume>();
+        row.levelIcon->Update(0, true);
+        row.levelMute.Content(row.levelIcon->Isolated());
+      } catch (...) {
+        row.levelIcon.reset();
+        Wh_Log(L"AppMuteIconError %08X", winrt::to_hresult());
+      }
+    auto root = row.root.get();
+    auto toggle = row.toggle.get();
+    if (!root || !toggle)
+      return;
+    for (auto const &child : root.Children())
+      if (auto e = child.try_as<X::FrameworkElement>();
+          e && e != toggle && e != slider && e != row.levelButton &&
+          e != row.levelMute && C::Grid::GetColumn(e) == 0) {
+        row.badgeJournal.Save(e, X::UIElement::VisibilityProperty());
+        e.Visibility(X::Visibility::Collapsed);
+      }
   }
   void App(C::Slider const &slider, X::Style const &style) {
     if (appIds_.contains(winrt::get_abi(slider)))
@@ -3875,28 +4912,6 @@ public:
         winrt::box_value(X::HorizontalAlignment::Center));
     Set(toggle, C::Control::VerticalContentAlignmentProperty(),
         winrt::box_value(X::VerticalAlignment::Center));
-    // The shell badge is anchored to the bottom of the entire 48 DIP row.
-    // A button-relative badge instead: right -5, bottom 2 of a 32 DIP icon.
-    std::vector<X::FrameworkElement> nativeBadges;
-    for (auto const &child : root.Children())
-      if (auto e = child.try_as<X::FrameworkElement>();
-          e && e != toggle && e != slider && C::Grid::GetColumn(e) == 0)
-        nativeBadges.push_back(e);
-    for (auto const &badge : nativeBadges)
-      Set(badge, X::UIElement::VisibilityProperty(), winrt::box_value(X::Visibility::Collapsed));
-    row->badge = C::Border();
-    row->badge.Width(13);
-    row->badge.Height(13);
-    row->badge.CornerRadius({4, 4, 4, 4});
-    row->badge.HorizontalAlignment(X::HorizontalAlignment::Right);
-    row->badge.VerticalAlignment(X::VerticalAlignment::Center);
-    row->badge.Margin({0, 15, -5, 0});
-    row->badge.IsHitTestVisible(false);
-    row->badge.Child(VolumeGlyph(page_, 0, 11));
-    if (auto brush = Resource(page_, L"SolidBackgroundFillColorBaseBrush").try_as<M::Brush>())
-      row->badge.Background(brush);
-    row->badge.Visibility(slider.Value() <= 0 ? X::Visibility::Visible : X::Visibility::Collapsed);
-    C::Canvas::SetZIndex(row->badge, 1);
     // The mute indicator replaces the number in the level column at 0. The
     // app's volume is shown as a number in the column under the SV settings
     // button: 32 DIP wide, 12 DIP after the slider, i.e. inside the row's 64 DIP
@@ -3905,7 +4920,7 @@ public:
     // button: pressing it (1-99) sets the app's volume to 100, written to the
     // session's model like the mouse wheel. At 100 it takes no input; at 0 the
     // mute button takes its place.
-    row->levelButton = Button(page_, L"Set volume to 100");
+    row->levelButton = Button(page_, sound::Text(L"Set volume to 100", L"Установить громкость на 100 %", L"Establecer el volumen al 100 %", L"Lautstärke auf 100 % einstellen", L"Definir o volume como 100%", L"将音量设为 100%"));
     row->levelButton.HorizontalAlignment(X::HorizontalAlignment::Right);
     row->levelButton.VerticalAlignment(X::VerticalAlignment::Center);
     row->levelButton.Margin({0, 0, -44, 0});
@@ -3955,19 +4970,14 @@ public:
     // size) replaces the number; pressing it unmutes like the app icon does: the
     // native toggle is toggled through UI Automation, so its command and the
     // mod's restore run exactly as for a click on the icon.
-    row->levelMute = Button(page_, L"Unmute");
-    row->levelMute.HorizontalAlignment(X::HorizontalAlignment::Right);
-    row->levelMute.VerticalAlignment(X::VerticalAlignment::Center);
-    row->levelMute.Margin({0, 0, -44, 0});
-    try {
-      row->levelIcon = std::make_shared<AnimatedVolume>();
-      row->levelIcon->Update(0, true);
-      row->levelMute.Content(row->levelIcon->Isolated());
-    } catch (...) {
-      row->levelIcon.reset();
-      row->levelMute.Content(VolumeGlyph(page_, 0, 16));
-    }
     {
+      auto unmute = sound::Text(L"Unmute", L"Включить звук", L"Activar sonido", L"Stummschaltung aufheben",
+                              L"Ativar som", L"取消静音");
+      row->levelMute = Button(page_, unmute);
+      row->levelMute.HorizontalAlignment(X::HorizontalAlignment::Right);
+      row->levelMute.VerticalAlignment(X::VerticalAlignment::Center);
+      row->levelMute.Margin({0, 0, -44, 0});
+      row->levelMute.Content(VolumeGlyph(page_, -1));
       auto weakToggle = winrt::make_weak(toggle);
       Keep(row->levelMute.Click(winrt::auto_revoke, [weakToggle](auto &&, auto &&) {
         try {
@@ -3981,10 +4991,11 @@ public:
           Wh_Log(L"MixerUnmuteError %08X", winrt::to_hresult());
         }
       }));
+      C::Grid::SetColumnSpan(row->levelMute, std::max(1u, root.ColumnDefinitions().Size()));
+      C::Grid::SetRowSpan(row->levelMute, std::max(1u, root.RowDefinitions().Size()));
+      Add(root, row->levelMute);
     }
-    C::Grid::SetColumnSpan(row->levelMute, std::max(1u, root.ColumnDefinitions().Size()));
-    C::Grid::SetRowSpan(row->levelMute, std::max(1u, root.RowDefinitions().Size()));
-    Add(root, row->levelMute);
+    SetAppMuteIcon(*row, slider);
     ShowLevel(*row, slider.Value());
     // Application images and the native fallback FontIcon remain shell-owned.
     // ButtonBase can mark routed input handled before instance subscribers run.
@@ -4037,44 +5048,49 @@ public:
     // Mouse wheel as on SV. Written to the session's model like mute/restore;
     // quick notches add up on the last requested value instead of a slider that
     // has not caught up yet.
-    Keep(slider.PointerWheelChanged(
-        winrt::auto_revoke, [this, row](auto &&, X::Input::PointerRoutedEventArgs const &args) {
+    volumeTip_.Watch(page_, slider, journal_, revoke_);
+    ListenVolumeWheel(
+        slider, [this, row](auto &&, X::Input::PointerRoutedEventArgs const &args) {
           try {
             auto s = row->slider.get();
-            if (!s || args.Handled() || !s.IsEnabled())
+            if (!s || !s.IsEnabled())
               return;
             auto point = args.GetCurrentPoint(s);
             if (point.Properties().IsHorizontalMouseWheel())
               return;
-            double delta = point.Properties().MouseWheelDelta() / 120.;
+            int delta = point.Properties().MouseWheelDelta();
             if (!delta)
               return;
+            if (args.Handled()) {
+              volumeTip_.Show(page_, s, s.Value());
+              return;
+            }
             args.Handled(true);
             if (RowModel(s) != row->model) {
               row->model = RowModel(s);
               row->wheelTarget = NAN;
+              row->wheel = {};
             }
             auto now = GetTickCount64();
             double base = now - row->wheelAt < 400 && std::isfinite(row->wheelTarget)
                               ? row->wheelTarget
                               : s.Value();
-            double step = s.SmallChange() > 0 ? s.SmallChange() : 1;
-            double next = std::clamp(std::round(base + delta * step), s.Minimum(), s.Maximum());
-            if (next == base)
-              return;
-            row->wheelTarget = next;
-            row->wheelAt = now;
-            if (!WriteVolume(s, row->model, next))
-              s.Value(next);
+            double next = row->wheel.Next(base, s.Minimum(), s.Maximum(), delta,
+                                         settings_.volumeWheelStep);
+            if (next != base) {
+              row->wheelTarget = next;
+              row->wheelAt = now;
+              if (!WriteVolume(s, row->model, next))
+                s.Value(next);
+            }
+            volumeTip_.Show(page_, s, next);
           } catch (...) {
             Wh_Log(L"MixerWheelError %08X", winrt::to_hresult());
           }
-        }));
+        }, revoke_);
     Keep(slider.ValueChanged(winrt::auto_revoke, [row](auto &&, auto const &args) {
       if (args.NewValue() > 0)
         row->last = args.NewValue();
-      row->badge.Visibility(args.NewValue() <= 0 ? X::Visibility::Visible
-                                                 : X::Visibility::Collapsed);
       ShowLevel(*row, args.NewValue());
     }));
   }
@@ -4109,6 +5125,7 @@ public:
     if (restoring_)
       return;
     restoring_ = true;
+    volumeTip_.Hide();
     if (gate_) {
       gate_.Stop();
       gate_.Tick(gateTick_);
@@ -4138,6 +5155,7 @@ public:
     }
     if (gearStory_)
       gearStory_.Stop();
+    gearJournal_.Restore();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();
       if (menu->arrowStory)
@@ -4163,6 +5181,7 @@ public:
     if (restoring_)
       return;
     restoring_ = true;
+    volumeTip_.Hide();
     if (gate_) {
       gate_.Stop();
       gate_.Tick(gateTick_);
@@ -4193,6 +5212,7 @@ public:
     }
     if (gearStory_)
       gearStory_.Stop();
+    gearJournal_.Restore();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();
       if (menu->arrowStory)
@@ -4625,23 +5645,52 @@ public:
 };
 } // namespace native
 
+#include <cstring>
 #include <winrt/Windows.UI.Text.h>
 namespace native {
+// This ControlCenter build keeps page height, count and offsets in the native
+// PaginatedGridView. Resolve its methods only for the image whose ABI was checked.
+using SetQuickRows = void(WINAPI *)(void *, int);
+using UpdateQuickExtent = void(WINAPI *)(void *);
+inline SetQuickRows setQuickRows = nullptr, originalSetQuickRows = nullptr;
+inline UpdateQuickExtent updateQuickExtent = nullptr;
+inline void *quickGridVtable = nullptr;
+inline void WINAPI KeepQuickRows(void *self, int rows) {
+  originalSetQuickRows(self, stopping ? rows : SettingsSnapshot().quickActionRows);
+  updateQuickExtent(self);
+}
+inline void HookQuickRows(HMODULE dll) {
+  auto image = reinterpret_cast<BYTE *>(dll);
+  auto dos = reinterpret_cast<IMAGE_DOS_HEADER *>(image);
+  auto nt = reinterpret_cast<IMAGE_NT_HEADERS *>(image + dos->e_lfanew);
+  constexpr BYTE signature[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xd9,
+                                0x39, 0x91, 0xa8, 0, 0, 0, 0x74, 0x5a, 0x89, 0x91};
+  if (nt->FileHeader.TimeDateStamp != 1878679008 || nt->OptionalHeader.SizeOfImage != 4313088 ||
+      std::memcmp(image + 0x29424c, signature, sizeof(signature)) != 0) {
+    Wh_Log(L"Native Quick Settings row override unavailable for this ControlCenter image");
+    return;
+  }
+  auto setter = reinterpret_cast<SetQuickRows>(image + 0x29424c);
+  if (*reinterpret_cast<void **>(image + 0x37f518) != image + 0x1018c0)
+    return;
+  updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(image + 0x2944d0);
+  quickGridVtable = image + 0x37f518;
+  if (WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows))
+    setQuickRows = setter;
+}
 // Quick Settings main page (ControlCenter.ControlCenterView). L1Grid holds a
 // light Border spanning TogglesGroup + SlidersGroup, then FooterGrid
 // (LeftFooter: battery on laptops; RightFooter: the native All settings
 // button). Changes:
 // - the light Border covers the tiles only; sliders sit in the dark block;
-// - All settings: title on the left (plate from 12, text from 20 DIP, like the
-//   Volume mixer heading), gear in the right column;
-// - dark block rows one 38 DIP step apart (StepPx): All settings,
+// - Settings text on the left, Display settings and Night light on the right;
+// - dark block rows one 38 DIP step apart (StepPx): Settings,
 //   [brightness], volume; 32 DIP buttons, 20 DIP side insets, thin sliders;
-// - the native battery footer moves into All settings; the old footer is hidden;
+// - the native battery footer moves into the Settings row;
 // - the volume L2 button shows the mixer glyph without the chevron and still
 //   runs the native LaunchAdvancedPageCommand;
 // - the pager keeps its native place, without arrows, with plain dots.
-// Native tiles, paging, commands, bindings and values are untouched; every
-// change is journaled and restored on unload.
+// Native controls are restored on unload.
 class QuickPage {
   X::FrameworkElement view_{nullptr};
   Journal journal_;
@@ -4652,33 +5701,41 @@ class QuickPage {
   bool dirty_ = true, restoring_ = false;
   int pagerTheme_ = -1;
   X::Style normalPip_{nullptr}, selectedPip_{nullptr};
+  winrt::weak_ref<X::FrameworkElement> tiledView_;
   C::Grid settingsRow_{nullptr};
-  C::Button gear_{nullptr}, title_{nullptr};
-  U::AnimatedIcon gearIcon_{nullptr};
+  C::StackPanel shortcuts_{nullptr};
+  std::vector<sound::QuickShortcut> visibleShortcuts_;
+  std::map<sound::QuickShortcut, C::Button> shortcutButtons_;
+  C::Button title_{nullptr};
   winrt::weak_ref<C::Button> nativeSettings_;
-  // Brightness row: night light status/toggle, DDC/CI slider, display settings.
   HWND host_ = nullptr;
   std::unique_ptr<Ddc> ddc_;
   C::StackPanel header_{nullptr};
   C::Grid brightRow_{nullptr};
+  Journal unavailableBrightness_;
+  winrt::weak_ref<X::FrameworkElement> hiddenBrightnessRow_;
+  winrt::weak_ref<X::FrameworkElement> missingBrightnessSlider_;
+  ULONGLONG missingBrightnessSince_ = 0;
+  bool nativeBrightnessAvailable_ = false;
   C::Button night_{nullptr}, display_{nullptr};
+  X::FrameworkElement brightnessGlyph_{nullptr};
   C::Slider bright_{nullptr};
   U::AnimatedIcon nightIcon_{nullptr};
   U::IAnimatedIconStatics statics_{nullptr};
   bool reapplying_ = false;
-  std::vector<std::shared_ptr<AnimatedVolume>> volumeIcons_;
   std::wstring nightState_, nightTip_;
   int nightRegistry_ = -1;
+  U::PipsPager nightPager_{nullptr};
+  int nightStartPage_ = 0;
+  int nightSearchPage_ = 0;
+  ULONGLONG nightSearchAfter_ = 0;
   U::AnimatedVisualPlayer brightPlayer_{nullptr};
   U::IAnimatedVisualSource2 brightSource_{nullptr};
-  X::FrameworkElement brightVisual_{nullptr};
   double brightFrom_ = 0, brightTo_ = 1;
   HMONITOR monitor_ = nullptr;
   unsigned seenRevision_ = 0;
   ULONGLONG lastRead_ = 0, lastUser_ = 0;
   bool sync_ = false, visible_ = false;
-  X::DispatcherTimer brightIdle_{nullptr};
-  winrt::event_token brightIdleTick_{};
   static inline std::map<HMONITOR, int> brightCache; // -1: no DDC/CI
   template <class R> void Keep(R &&r) {
     auto revoker = std::make_shared<std::decay_t<R>>(std::forward<R>(r));
@@ -4695,9 +5752,15 @@ class QuickPage {
   SliderLook Look() { return {journal_, revoke_, thinSliders_}; }
   // The volume row's own slider and mute button (QuickVolume).
   std::unique_ptr<QuickVolume> quickVolume_;
+  ModSettings settings_;
   C::Slider quickSlider_{nullptr};
-  C::Button quickMute_{nullptr};
+  P::ButtonBase quickMute_{nullptr};
+  C::Button quickMixerButton_{nullptr};
+  IInspectable originalMixerIcon_{nullptr};
   std::shared_ptr<AnimatedVolume> quickIcon_;
+  sound::WheelVolume volumeWheel_;
+  VolumeToolTip volumeTip_;
+  int quickGlyph_ = -2;
   bool quickSync_ = false, quickAvailable_ = false;
   ULONGLONG quickUserAt_ = 0;
   // As ApplyMaster on the Sound page: while the slider is being moved (400 ms
@@ -4717,14 +5780,18 @@ class QuickPage {
     }
     if (quickSlider_.IsEnabled() != available)
       quickSlider_.IsEnabled(available);
-    if (quickMute_ && quickMute_.IsEnabled() != available)
-      quickMute_.IsEnabled(available);
-    if (quickIcon_) {
-      if (dragging) {
-        auto v = float(quickSlider_.Value() / 100);
-        quickIcon_->Update(v, v <= 0, available);
-      } else
-        quickIcon_->Update(value, muted, available);
+    if (dragging) {
+      value = float(quickSlider_.Value() / 100);
+      muted = value <= 0;
+    }
+    QuickGlyph(value, muted);
+  }
+  void QuickGlyph(float value, bool muted) {
+    if (quickIcon_)
+      quickIcon_->Update(value, muted, quickAvailable_);
+    else if (int glyph = sound::VolumeIcon(value, muted); quickMute_ && glyph != quickGlyph_) {
+      quickMute_.Content(VolumeGlyph(view_, glyph));
+      quickGlyph_ = glyph;
     }
   }
   void RefreshVolume() {
@@ -4831,14 +5898,6 @@ class QuickPage {
     }
     alignPasses_ = changed ? alignPasses_ + 1 : 4;
   }
-  std::wstring SettingsName() {
-    if (auto b = nativeSettings_.get()) {
-      auto n = std::wstring(X::Automation::AutomationProperties::GetName(b));
-      if (!n.empty())
-        return n;
-    }
-    return L"All settings";
-  }
   void OpenSettings() {
     try {
       if (auto b = nativeSettings_.get())
@@ -4865,55 +5924,13 @@ class QuickPage {
     Set(button, X::FrameworkElement::VerticalAlignmentProperty(),
         winrt::box_value(X::VerticalAlignment::Center));
   }
-  // Gear (native QA_All_Settings animation, FooterIconButtonStyle states) and an
-  // "All settings" title styled like the Volume mixer title; both run the native
-  // footer button's command, which opens Settings and closes the panel.
   C::Grid SettingsRow() {
     // 38 DIP steps: 5.6 + 38.4 lands on whole pixels at 125% (7 + 48 px).
-    auto row = Grid(L"40,*,40");
+    auto row = Grid(L"Auto,*,Auto");
+    row.UseLayoutRounding(true);
     row.Height(38.4);
     row.Margin({0, 5.6, 0, 0});
-    auto name = SettingsName();
-    gear_ = C::Button();
-    if (auto style = Resource(view_, L"FooterIconButtonStyle").try_as<X::Style>())
-      gear_.Style(style);
-    gear_.Width(36);
-    gear_.Height(36);
-    gear_.MinWidth(0);
-    gear_.MinHeight(0);
-    gear_.Padding({0, 0, 0, 0});
-    gear_.HorizontalAlignment(X::HorizontalAlignment::Center);
-    gear_.VerticalAlignment(X::VerticalAlignment::Center);
-    X::Automation::AutomationProperties::SetName(gear_, name);
-    C::ToolTipService::SetToolTip(gear_, winrt::box_value(name));
-    try {
-      auto factory = NativeAnimatedFactory();
-      IInspectable inner{nullptr};
-      gearIcon_ = factory.as<U::IAnimatedIconFactory>().CreateInstance(nullptr, inner);
-      auto statics = factory.as<U::IAnimatedIconStatics>();
-      gearIcon_.Source(NativeSource(L"ControlCenter.QA_All_Settings"));
-      gearIcon_.Width(16);
-      gearIcon_.Height(16);
-      gearIcon_.IsHitTestVisible(false);
-      gear_.Content(gearIcon_);
-      // The native footer icon binds its State to the button's AnimatedIcon.State.
-      auto icon = gearIcon_;
-      auto gear = gear_;
-      auto token = gear_.RegisterPropertyChangedCallback(
-          statics.StateProperty(),
-          [statics, icon](X::DependencyObject const &sender, X::DependencyProperty const &) {
-            try {
-              statics.SetState(icon, statics.GetState(sender));
-            } catch (...) {
-            }
-          });
-      revoke_.push_back([gear, statics, token] {
-        gear.UnregisterPropertyChangedCallback(statics.StateProperty(), token);
-      });
-    } catch (...) {
-      Wh_Log(L"QuickGearIconError %08X", winrt::to_hresult());
-      gear_.Content(SymbolGlyph(view_, 0xe713, 16));
-    }
+    auto name = sound::Text(L"Settings", L"Настройки", L"Configuración", L"Einstellungen", L"Configurações", L"设置");
     // The hover frame hugs the text.
     title_ = C::Button();
     if (auto style = Resource(view_, L"IconButtonStyle").try_as<X::Style>())
@@ -4935,17 +5952,21 @@ class QuickPage {
     text.TextTrimming(X::TextTrimming::CharacterEllipsis);
     if (auto label = Named(view_, L"TitleText").try_as<C::TextBlock>())
       text.FontFamily(label.FontFamily());
+    else if (auto font = Resource(view_, L"ContentControlThemeFontFamily").try_as<M::FontFamily>())
+      text.FontFamily(font);
     title_.Content(text);
     X::Automation::AutomationProperties::SetName(title_, name);
-    // Title on the left like the section headings, the gear in the right column
-    // (with the display and sound settings buttons).
     C::Grid::SetColumn(title_, 0);
-    C::Grid::SetColumnSpan(title_, 2);
     row.Children().Append(title_);
-    C::Grid::SetColumn(gear_, 2);
-    row.Children().Append(gear_);
-    Keep(gear_.Click(winrt::auto_revoke, [this](auto &&, auto &&) { OpenSettings(); }));
     Keep(title_.Click(winrt::auto_revoke, [this](auto &&, auto &&) { OpenSettings(); }));
+    shortcuts_ = C::StackPanel();
+    shortcuts_.Orientation(C::Orientation::Horizontal);
+    C::Grid::SetColumn(shortcuts_, 2);
+    row.Children().Append(shortcuts_);
+    display_ = ShortcutButton(sound::QuickShortcut::Display);
+    NightButton();
+    shortcutButtons_ = {{sound::QuickShortcut::Display, display_}};
+    visibleShortcuts_.clear();
     settingsRow_ = row;
     return row;
   }
@@ -4980,43 +6001,87 @@ class QuickPage {
     C::ToolTipService::SetToolTip(b, winrt::box_value(name));
     return b;
   }
-  // Brightness row: night light (status and toggle), brightness over DDC/CI
-  // where Windows has no brightness slider, display settings.
-  C::Grid BrightnessRow() {
-    // Header rows on whole pixels at 125%: rows of fractional pixel height push
-    // every row below off the grid.
-    auto row = Grid(L"40,*,40");
-    row.Height(39.2);
-    row.Visibility(X::Visibility::Collapsed); // corrected by AlignSteps
-    night_ = IconButton(L"Night light");
-    // A plain Grid parent: the icons take only the states set here (see AnimatedVolume).
-    C::Grid icons;
-    icons.IsHitTestVisible(false);
-    icons.HorizontalAlignment(X::HorizontalAlignment::Center);
-    icons.VerticalAlignment(X::VerticalAlignment::Center);
-    // QA_Nightlight draws its picture smaller in the 16 DIP box than
-    // QA_Brightness (at 125%: 18 px vs 20 px wide); 17.6 DIP (22 px box) matches
-    // the brightness picture that replaces it while the slider moves.
+  C::Button ShortcutButton(sound::QuickShortcut action) {
+    using S = sound::QuickShortcut;
+    PCWSTR name = nullptr, uri = nullptr;
+    wchar_t glyph = 0;
+    switch (action) {
+    case S::Display:
+      name = sound::Text(L"Display settings", L"Параметры дисплея", L"Configuración de pantalla",
+                         L"Anzeigeeinstellungen", L"Configurações de exibição", L"显示设置");
+      uri = L"ms-settings:display";
+      glyph = 0xe7f4;
+      break;
+    case S::Network:
+      name = sound::Text(L"Network & internet", L"Сеть и Интернет", L"Red e Internet",
+                         L"Netzwerk und Internet", L"Rede e Internet", L"网络和 Internet");
+      uri = L"ms-settings:network-status";
+      glyph = 0xe968;
+      break;
+    case S::Bluetooth:
+      name = sound::Text(L"Bluetooth & devices", L"Bluetooth и устройства", L"Bluetooth y dispositivos",
+                         L"Bluetooth und Geräte", L"Bluetooth e dispositivos", L"蓝牙和设备");
+      uri = L"ms-settings:bluetooth";
+      glyph = 0xe702;
+      break;
+    case S::Apps:
+      name = sound::Text(L"Installed apps", L"Установленные приложения", L"Aplicaciones instaladas",
+                         L"Installierte Apps", L"Aplicativos instalados", L"已安装的应用");
+      uri = L"ms-settings:appsfeatures";
+      glyph = 0xe71d;
+      break;
+    case S::Notifications:
+      name = sound::Text(L"Notifications", L"Уведомления", L"Notificaciones",
+                         L"Benachrichtigungen", L"Notificações", L"通知");
+      uri = L"ms-settings:notifications";
+      glyph = 0xea8f;
+      break;
+    case S::Graphics:
+      name = sound::Text(L"Graphics", L"Графика", L"Gráficos", L"Grafik",
+                         L"Elementos gráficos", L"图形");
+      uri = L"ms-settings:display-advancedgraphics";
+      glyph = 0xe7f4;
+      break;
+    case S::NetworkSettings:
+      name = sound::Text(L"Advanced network settings", L"Сетевые параметры",
+                         L"Configuración de red avanzada", L"Erweiterte Netzwerkeinstellungen",
+                         L"Configurações avançadas de rede", L"高级网络设置");
+      uri = L"ms-settings:network-advancedsettings";
+      glyph = 0xe839;
+      break;
+    case S::Power:
+      name = sound::Text(L"Power", L"Питание", L"Energía", L"Strom",
+                         L"Energia", L"电源");
+      uri = L"ms-settings:powersleep";
+      glyph = 0xe7e8;
+      break;
+    case S::Update:
+      name = sound::Text(L"Windows Update", L"Центр обновления", L"Windows Update",
+                         L"Windows Update", L"Windows Update", L"Windows 更新");
+      uri = L"ms-settings:windowsupdate";
+      glyph = 0xe777;
+      break;
+    default:
+      return nullptr;
+    }
+    auto button = IconButton(name);
+    button.Margin({4, 0, 4, 0});
+    button.Content(SymbolGlyph(view_, glyph));
+    Keep(button.Click(winrt::auto_revoke, [uri](auto &&, auto &&) {
+      ShellExecuteW(nullptr, L"open", uri, nullptr, nullptr, SW_SHOWNORMAL);
+    }));
+    return button;
+  }
+  void NightButton() {
+    night_ = IconButton(sound::Text(L"Night light", L"Ночной свет", L"Luz nocturna", L"Nachtmodus", L"Luz noturna", L"夜间模式"));
+    night_.Margin({4, 0, 4, 0});
     try {
       nightIcon_ = NativeIcon(L"ControlCenter.QA_Nightlight");
-      nightIcon_.Width(17.6);
-      nightIcon_.Height(17.6);
-      icons.Children().Append(nightIcon_);
+      night_.Content(nightIcon_);
     } catch (...) {
-      Wh_Log(L"QuickBrightnessIconError %08X", winrt::to_hresult());
-      icons.Children().Append(SymbolGlyph(view_, 0xe706, 16));
+      Wh_Log(L"QuickNightIconError %08X", winrt::to_hresult());
+      night_.Content(SymbolGlyph(view_, 0xe708));
     }
-    try {
-      BrightnessIcon();
-      if (brightVisual_) {
-        brightVisual_.Visibility(X::Visibility::Collapsed);
-        icons.Children().Append(brightVisual_);
-      }
-    } catch (...) {
-      Wh_Log(L"QuickBrightnessPlayerError %08X", winrt::to_hresult());
-    }
-    night_.Content(icons);
-    row.Children().Append(night_);
     // Status only: QA_Nightlight's PointerOver/Pressed frames show the other
     // status, so the icon stays on NormalOn/NormalOff; the button's own hover
     // plate shows the pointer. The button template still writes
@@ -5059,6 +6124,22 @@ class QuickPage {
         reapplying_ = false;
       }));
     }
+    Keep(night_.Click(winrt::auto_revoke, [this](auto &&, auto &&) { ToggleNight(); }));
+    nightRegistry_ = RegistryNight();
+    NightState();
+  }
+  C::Grid BrightnessRow() {
+    auto row = Grid(L"40,*,40");
+    row.Height(39.2);
+    row.Visibility(X::Visibility::Collapsed);
+    try {
+      BrightnessIcon();
+      brightnessGlyph_ = brightPlayer_;
+    } catch (...) {
+      Wh_Log(L"QuickBrightnessPlayerError %08X", winrt::to_hresult());
+      brightnessGlyph_ = SymbolGlyph(view_, 0xe706);
+    }
+    row.Children().Append(brightnessGlyph_);
     bright_ = C::Slider();
     if (auto style = Resource(view_, L"HeaderIconSliderStyle").try_as<X::Style>())
       bright_.Style(style);
@@ -5069,19 +6150,9 @@ class QuickPage {
     bright_.SmallChange(2);
     bright_.LargeChange(10);
     bright_.IsThumbToolTipEnabled(true);
-    X::Automation::AutomationProperties::SetName(bright_, L"Brightness");
+    X::Automation::AutomationProperties::SetName(bright_, sound::Text(L"Brightness", L"Яркость", L"Brillo", L"Helligkeit", L"Brilho", L"亮度"));
     C::Grid::SetColumn(bright_, 1);
     row.Children().Append(bright_);
-    display_ = IconButton(L"Display settings");
-    display_.Content(SymbolGlyph(view_, 0xe7f4, 13.6));
-    C::Grid::SetColumn(display_, 2);
-    row.Children().Append(display_);
-    Keep(night_.Click(winrt::auto_revoke, [this](auto &&, auto &&) { ToggleNight(); }));
-    // 13.6 DIP (17 px at 125%), the size of the mixer and sound settings glyphs
-    // in the same column.
-    Keep(display_.Click(winrt::auto_revoke, [](auto &&, auto &&) {
-      ShellExecuteW(nullptr, L"open", L"ms-settings:display", nullptr, nullptr, SW_SHOWNORMAL);
-    }));
     Keep(bright_.ValueChanged(winrt::auto_revoke, [this](auto &&, auto const &args) {
       if (sync_ || !ddc_)
         return;
@@ -5108,20 +6179,7 @@ class QuickPage {
           } catch (...) {
           }
         }));
-    brightIdle_ = X::DispatcherTimer();
-    brightIdle_.Interval(std::chrono::milliseconds(800));
-    brightIdleTick_ = brightIdle_.Tick([this](auto &&, auto &&) {
-      brightIdle_.Stop();
-      if (brightVisual_ && nightIcon_) {
-        brightVisual_.Visibility(X::Visibility::Collapsed);
-        nightIcon_.Visibility(X::Visibility::Visible);
-      }
-    });
-    // The status is read before the first state is set; with the -1 default the
-    // icon would start as NormalOff and animate to On a moment later.
-    nightRegistry_ = RegistryNight();
     brightRow_ = row;
-    NightState();
     return row;
   }
   // QA_Brightness has two markers, Brightness_at_0 and Brightness_at_100: the
@@ -5156,12 +6214,9 @@ class QuickPage {
     brightPlayer_.IsHitTestVisible(false);
     brightPlayer_.HorizontalAlignment(X::HorizontalAlignment::Center);
     brightPlayer_.VerticalAlignment(X::VerticalAlignment::Center);
-    brightVisual_ = brightPlayer_;
   }
-  // While brightness changes the button shows the native brightness icon at the
-  // new level, then the night light status 800 ms after the last change.
   void ShowBrightness(int value) {
-    if (!brightVisual_ || !nightIcon_)
+    if (!brightPlayer_)
       return;
     try {
       if (brightSource_) {
@@ -5170,15 +6225,10 @@ class QuickPage {
                                        light ? winrt::Windows::UI::Color{0xE4, 0, 0, 0}
                                              : winrt::Windows::UI::Color{0xFF, 0xFF, 0xFF, 0xFF});
       }
-      if (brightPlayer_)
-        brightPlayer_.SetProgress(brightFrom_ +
-                                  (brightTo_ - brightFrom_) * std::clamp(value, 0, 100) / 100.);
+      brightPlayer_.SetProgress(brightFrom_ +
+                                (brightTo_ - brightFrom_) * std::clamp(value, 0, 100) / 100.);
     } catch (...) {
     }
-    nightIcon_.Visibility(X::Visibility::Collapsed);
-    brightVisual_.Visibility(X::Visibility::Visible);
-    brightIdle_.Stop();
-    brightIdle_.Start();
   }
   // Night light status, read (never written) from the shell's CloudStore state
   // (byte 18: 0x15 on, 0x13 off).
@@ -5210,7 +6260,9 @@ class QuickPage {
       }
       reapplying_ = false;
     }
-    std::wstring name = std::wstring(L"Night light") + (on ? L": on" : L": off");
+    std::wstring name = nightRegistry_ < 0 ? sound::Text(L"Night light", L"Ночной свет", L"Luz nocturna", L"Nachtmodus", L"Luz noturna", L"夜间模式")
+                    : on ? sound::Text(L"Night light: on", L"Ночной свет включен", L"Luz nocturna activada", L"Nachtmodus ein", L"Luz noturna ativada", L"夜间模式已打开")
+                         : sound::Text(L"Night light: off", L"Ночной свет выключен", L"Luz nocturna desactivada", L"Nachtmodus aus", L"Luz noturna desativada", L"夜间模式已关闭");
     if (name != nightTip_) {
       nightTip_ = name;
       C::ToolTipService::SetToolTip(night_, winrt::box_value(name));
@@ -5227,8 +6279,7 @@ class QuickPage {
   static void *Identity(IInspectable const &o) {
     return o ? winrt::get_abi(o.as<winrt::Windows::Foundation::IUnknown>()) : nullptr;
   }
-  // The native tile when it is realized (page 2 tiles are released when page 1
-  // shows, and containers are recycled, so it is looked up on every click).
+  // Tile containers are recycled as the pager changes pages.
   X::FrameworkElement NightTileNow() {
     void *mine = nightIcon_ ? Identity(nightIcon_) : nullptr;
     X::FrameworkElement found{nullptr};
@@ -5247,13 +6298,11 @@ class QuickPage {
     if (!found)
       return nullptr;
     for (auto p = Parent(found); p && p != view_; p = Parent(p))
-      if (Class(p).find(L"ToggleButton") != std::wstring::npos)
-        return p;
+      if (auto toggle = p.try_as<P::ToggleButton>())
+        return toggle.IsEnabled() ? p : nullptr;
     return nullptr;
   }
-  // Night light toggle: the native tile through UI Automation when it is
-  // realized, otherwise the Night light page of Settings.
-  void ToggleNight() {
+  bool ToggleNightTile() {
     try {
       if (auto tile = NightTileNow())
         if (auto peer =
@@ -5261,40 +6310,209 @@ class QuickPage {
           if (auto toggle = peer.GetPattern(X::Automation::Peers::PatternInterface::Toggle)
                                 .try_as<X::Automation::Provider::IToggleProvider>()) {
             toggle.Toggle();
-            nightRegistry_ = nightRegistry_ == 1 ? 0 : 1;
-            NightState();
-            return;
+            return true;
           }
           if (auto invoke = peer.GetPattern(X::Automation::Peers::PatternInterface::Invoke)
                                 .try_as<X::Automation::Provider::IInvokeProvider>()) {
             invoke.Invoke();
-            nightRegistry_ = nightRegistry_ == 1 ? 0 : 1;
-            NightState();
-            return;
+            return true;
           }
         }
     } catch (...) {
       Wh_Log(L"QuickNightToggleError %08X", winrt::to_hresult());
     }
+    return false;
+  }
+  static void OpenNightSettings() {
     ShellExecuteW(nullptr, L"open", L"ms-settings:nightlight", nullptr, nullptr, SW_SHOWNORMAL);
   }
-  bool NativeBrightness() {
+  void FinishNightSearch() {
+    auto pager = std::exchange(nightPager_, nullptr);
+    if (pager && pager.SelectedPageIndex() == nightSearchPage_)
+      pager.SelectedPageIndex(nightStartPage_);
+  }
+  void NextNightPage() {
+    nightSearchPage_ = (nightSearchPage_ + 1) % nightPager_.NumberOfPages();
+    nightPager_.SelectedPageIndex(nightSearchPage_);
+    // Let the shell realize the next page before looking for its tile.
+    nightSearchAfter_ = GetTickCount64() + 200;
+  }
+  void ToggleNight() {
+    if (nightPager_ || ToggleNightTile())
+      return;
+    try {
+      auto pager = Named(view_, L"QuickActionsPager").try_as<U::PipsPager>();
+      if (pager && pager.NumberOfPages() > 1 && pager.SelectedPageIndex() >= 0) {
+        nightStartPage_ = nightSearchPage_ = pager.SelectedPageIndex();
+        nightPager_ = pager;
+        NextNightPage();
+        return;
+      }
+    } catch (...) {
+      nightPager_ = nullptr;
+      Wh_Log(L"QuickNightPagerError %08X", winrt::to_hresult());
+    }
+    OpenNightSettings();
+  }
+  void ContinueNightSearch() {
+    if (!nightPager_)
+      return;
+    if (!visible_ || nightPager_.SelectedPageIndex() != nightSearchPage_) {
+      FinishNightSearch();
+      return;
+    }
+    if (GetTickCount64() < nightSearchAfter_)
+      return;
+    if (ToggleNightTile()) {
+      FinishNightSearch();
+      return;
+    }
+    int pages = nightPager_.NumberOfPages();
+    if (pages > 1 && (nightSearchPage_ + 1) % pages != nightStartPage_) {
+      NextNightPage();
+      return;
+    }
+    FinishNightSearch();
+    OpenNightSettings();
+  }
+  X::FrameworkElement NativeBrightnessRow() {
     auto group = Named(view_, L"SlidersGroup");
-    return group && Named(group, L"BrightnessPlayer");
+    auto icon = Named(group, L"BrightnessPlayer");
+    if (!icon)
+      return nullptr;
+    for (auto parent = Parent(icon); parent && parent != group; parent = Parent(parent))
+      if (parent.try_as<C::GridViewItem>())
+        return parent;
+    return nullptr;
+  }
+  static C::Slider NativeBrightnessSlider(X::FrameworkElement const &row) {
+    return Find(row, [](auto const &element) { return !!element.template try_as<C::Slider>(); })
+        .try_as<C::Slider>();
+  }
+  bool NativeBrightnessUsable(C::Slider const &slider) {
+    if (!slider || !slider.IsEnabled() || slider.Maximum() <= slider.Minimum())
+      return false;
+    for (auto element = slider.as<X::FrameworkElement>(); element; element = Parent(element)) {
+      if (element.Visibility() != X::Visibility::Visible)
+        return false;
+      if (element == view_)
+        return true;
+    }
+    return false;
+  }
+  void HideUnavailableBrightness(X::FrameworkElement const &row, bool hide) {
+    auto hidden = hiddenBrightnessRow_.get();
+    if (hidden && row == hidden && hide)
+      return;
+    unavailableBrightness_.Restore();
+    hiddenBrightnessRow_ = nullptr;
+    if (!hide)
+      return;
+    // Keep the native visibility binding and slider state live so a monitor
+    // change can bring the native row back while Quick Settings is open.
+    unavailableBrightness_.Save(row, X::FrameworkElement::MinHeightProperty());
+    unavailableBrightness_.Save(row, X::FrameworkElement::MaxHeightProperty());
+    unavailableBrightness_.Save(row, X::UIElement::IsHitTestVisibleProperty());
+    hiddenBrightnessRow_ = winrt::make_weak(row);
+    row.MinHeight(0);
+    row.MaxHeight(0);
+    row.IsHitTestVisible(false);
+  }
+  bool BrightnessTemplateMissing(X::FrameworkElement const &row, C::Slider const &slider) {
+    if (!row || slider || row.Visibility() != X::Visibility::Visible) {
+      missingBrightnessSlider_ = nullptr;
+      return false;
+    }
+    if (hiddenBrightnessRow_.get() == row)
+      return true;
+    if (!PanelVisible()) {
+      missingBrightnessSlider_ = nullptr;
+      return false;
+    }
+    // The shell can load the icon before the slider. Leave this row alone for
+    // one layout interval, then hide it unless the real control has arrived.
+    auto now = GetTickCount64();
+    if (missingBrightnessSlider_.get() != row) {
+      missingBrightnessSlider_ = winrt::make_weak(row);
+      missingBrightnessSince_ = now;
+    }
+    return now - missingBrightnessSince_ >= 250;
+  }
+  void PlaceDisplayActions() {
+    if (!settingsRow_ || !night_ || !display_)
+      return;
+    auto nativeRow = NativeBrightnessRow();
+    if (!settings_.brightnessEnabled && nativeRow && First(nativeRow, 76))
+      Set(nativeRow, X::UIElement::VisibilityProperty(), winrt::box_value(X::Visibility::Collapsed));
+    auto nativeSlider = NativeBrightnessSlider(nativeRow);
+    bool nativeVisible = settings_.brightnessEnabled && NativeBrightnessUsable(nativeSlider);
+    bool missingSlider = settings_.brightnessEnabled &&
+                         BrightnessTemplateMissing(nativeRow, nativeSlider);
+    HideUnavailableBrightness(nativeRow, settings_.brightnessEnabled && nativeRow &&
+                                            nativeRow.Visibility() == X::Visibility::Visible &&
+                                            !nativeVisible && (nativeSlider || missingSlider));
+    if (nativeVisible && brightRow_ && brightRow_.Visibility() == X::Visibility::Visible) {
+      brightRow_.Visibility(X::Visibility::Collapsed);
+      alignPasses_ = 0;
+    }
+    bool nativeDisplay = nativeVisible && Find(nativeRow, [](auto const &e) {
+      auto button = e.template try_as<C::Button>();
+      return button && button.Visibility() == X::Visibility::Visible &&
+             String(button.CommandParameter()) == L"ms-settings:display";
+    });
+    bool ddcVisible = brightRow_ && brightRow_.Visibility() == X::Visibility::Visible;
+    auto shortcuts = sound::QuickShortcuts(settings_.quickShortcuts, nativeDisplay || ddcVisible);
+    bool changed = shortcuts != visibleShortcuts_;
+    if (changed)
+      shortcuts_.Children().Clear();
+    if (brightRow_) {
+      auto place = [&](C::Button const &button, int column) {
+        uint32_t index = 0;
+        bool attached = brightRow_.Children().IndexOf(button, index);
+        if (ddcVisible && !attached) {
+          C::Grid::SetColumn(button, column);
+          brightRow_.Children().Append(button);
+        } else if (!ddcVisible && attached) {
+          brightRow_.Children().RemoveAt(index);
+        }
+      };
+      place(display_, 2);
+      place(night_, 0);
+    }
+    if (changed) {
+      for (auto action : shortcuts) {
+        auto it = shortcutButtons_.find(action);
+        if (it == shortcutButtons_.end())
+          it = shortcutButtons_.emplace(action, ShortcutButton(action)).first;
+        if (it->second)
+          shortcuts_.Children().Append(it->second);
+      }
+      visibleShortcuts_ = std::move(shortcuts);
+    }
+    if (brightnessGlyph_) {
+      auto visibility = ddcVisible ? X::Visibility::Collapsed : X::Visibility::Visible;
+      if (brightnessGlyph_.Visibility() != visibility)
+        brightnessGlyph_.Visibility(visibility);
+    }
   }
   bool PanelVisible() { return WindowShown(host_); }
-  void ApplyBright(int value) {
+  void ApplyBright(int value, bool nativeAvailable) {
     if (!brightRow_)
       return;
-    bool show = value >= 0 && !NativeBrightness();
+    bool show = value >= 0 && !nativeAvailable;
     auto want = show ? X::Visibility::Visible : X::Visibility::Collapsed;
-    if (brightRow_.Visibility() != want)
+    if (brightRow_.Visibility() != want) {
       brightRow_.Visibility(want);
+      alignPasses_ = 0;
+      PlaceDisplayActions();
+    }
     if (value >= 0 && std::lround(bright_.Value()) != value) {
       sync_ = true;
       bright_.Value(value);
       sync_ = false;
     }
+    if (show)
+      ShowBrightness(value);
   }
   // Panel monitor: cached value at once, a DDC/CI read on opening and every 3 s
   // while open (not while the user is changing it).
@@ -5303,13 +6521,16 @@ class QuickPage {
       return;
     auto now = GetTickCount64();
     auto monitor = MonitorFromWindow(host_, MONITOR_DEFAULTTONEAREST);
-    if (monitor != monitor_) {
+    bool nativeAvailable = NativeBrightnessUsable(NativeBrightnessSlider(NativeBrightnessRow()));
+    bool availabilityChanged = nativeBrightnessAvailable_ != nativeAvailable;
+    nativeBrightnessAvailable_ = nativeAvailable;
+    if (monitor != monitor_ || availabilityChanged) {
       monitor_ = monitor;
       lastRead_ = 0;
       auto cached = brightCache.find(monitor);
-      ApplyBright(cached != brightCache.end() ? cached->second : -1);
+      ApplyBright(cached != brightCache.end() ? cached->second : -1, nativeAvailable);
     }
-    if (!NativeBrightness() && (opening || now - lastRead_ > 3000) && now - lastUser_ > 1500 &&
+    if (!nativeAvailable && (opening || now - lastRead_ > 3000) && now - lastUser_ > 1500 &&
         (opening || visible_)) {
       lastRead_ = now;
       ddc_->Read(monitor_);
@@ -5321,7 +6542,7 @@ class QuickPage {
         int value = r.supported ? r.value : -1;
         brightCache[monitor_] = value;
         if (now - lastUser_ > 1500 || !r.supported)
-          ApplyBright(value);
+          ApplyBright(value, nativeAvailable);
       }
     }
   }
@@ -5454,9 +6675,10 @@ class QuickPage {
       }
       return false; // Visit all native buttons without stopping the traversal.
     });
-    // Reserve the battery width and its 6-DIP outer inset; gear stays in column 2.
+    // Reserve the occupied action slots and the battery width.
     if (title_ && settingsRow_.ActualWidth() > 0) {
-      double available = std::max(0., settingsRow_.ActualWidth() - 40. - left.ActualWidth() - 6. - 12.);
+      double available = std::max(
+          0., settingsRow_.ActualWidth() - shortcuts_.ActualWidth() - left.ActualWidth() - 6. - 12.);
       if (title_.MaxWidth() != available)
         title_.MaxWidth(available);
     }
@@ -5467,8 +6689,9 @@ class QuickPage {
       if (First(view_, 74)) Wh_Log(L"Quick battery: FooterGrid was not found");
       return;
     }
-    if (!nativeSettings_.get())
-      if (auto icon = Find(footer, [](auto const &e) {
+    if (!nativeSettings_.get()) {
+      auto right = Named(footer, L"RightFooter");
+      if (auto icon = Find(right ? right : footer, [](auto const &e) {
             auto a = e.template try_as<U::AnimatedIcon>();
             return a && Class(a.Source()) == L"ControlCenter.QA_All_Settings";
           }))
@@ -5477,6 +6700,7 @@ class QuickPage {
             nativeSettings_ = winrt::make_weak(button);
             break;
           }
+    }
     // Search the view: after migration LeftFooter lives in our header.
     auto left = Named(view_, L"LeftFooter");
     bool moved = MoveBatteryFooter(left, footer);
@@ -5558,6 +6782,42 @@ class QuickPage {
     Set(pager, U::PipsPager::SelectedPipStyleProperty(),
         pip(selectedPip_, 1., selectedPx / pipScale));
   }
+  void TileRows(C::Grid const &l1) {
+    if (!setQuickRows)
+      return;
+    auto paginated = Find(Named(l1, L"TogglesGroup"), [](auto const &e) {
+      return Class(e) == L"ControlCenter.PaginatedGridView";
+    });
+    if (!paginated || paginated == tiledView_.get())
+      return;
+    // The IPaginatedGridView subobject at +0x10 is returned by this image's
+    // QueryInterface. Verify the complete object's vtable before calling it.
+    constexpr GUID iid{0xab1ce38d, 0x0d8e, 0x55a0, {0x87, 0xb5, 0x89, 0x0c, 0xd5, 0x4f, 0x67, 0x22}};
+    winrt::com_ptr<::IUnknown> iface;
+    if (FAILED(winrt::get_unknown(paginated)->QueryInterface(iid, iface.put_void())))
+      return;
+    auto self = reinterpret_cast<BYTE *>(iface.get()) - 0x10;
+    if (*reinterpret_cast<void **>(self) != quickGridVtable)
+      return;
+    int rows = *reinterpret_cast<int const *>(self + 0xa8);
+    auto grid = Named(paginated, L"RootGridView").try_as<C::GridView>();
+    if (!grid)
+      return;
+    // Native layouts use one or two rows depending on available height.
+    int nativeRows = rows == 1 ? 1 : 2;
+    if (auto pager = Named(view_, L"QuickActionsPager").try_as<U::PipsPager>();
+        pager && rows != settings_.quickActionRows && pager.SelectedPageIndex() > 0)
+      pager.SelectedPageIndex(0);
+    setQuickRows(self, settings_.quickActionRows);
+    tiledView_ = winrt::make_weak(paginated);
+    Wh_Log(L"Quick Settings pagination set to %d rows, %u tiles", settings_.quickActionRows,
+           grid.Items().Size());
+    journal_.undo.push_back([iface, nativeRows] {
+      auto self = reinterpret_cast<BYTE *>(iface.get()) - 0x10;
+      originalSetQuickRows(self, nativeRows);
+      updateQuickExtent(self);
+    });
+  }
   // Mute button of the volume row: a button of the mod's own in the same Grid
   // cell, with the system QA_Volume asset driven by Core Audio and the slider.
   // The mod's icon cannot live inside the native ToggleButton: the shell owns
@@ -5580,15 +6840,12 @@ class QuickPage {
     }
     if (!mute || !slider || !First(mute, 5))
       return;
-    std::shared_ptr<AnimatedVolume> icon;
-    try {
-      icon = std::make_shared<AnimatedVolume>();
-    } catch (...) {
-      Wh_Log(L"QuickVolumeIconError %08X", winrt::to_hresult());
-      return;
-    }
-    volumeIcons_.push_back(icon);
-    quickIcon_ = icon;
+    if (settings_.altQuickVolume)
+      try {
+        quickIcon_ = std::make_shared<AnimatedVolume>();
+      } catch (...) {
+        Wh_Log(L"QuickVolumeIconError %08X", winrt::to_hresult());
+      }
     auto hide = [this](X::UIElement const &e) {
       Set(e, X::UIElement::OpacityProperty(), winrt::box_value(0.));
       Set(e, X::UIElement::IsHitTestVisibleProperty(), winrt::box_value(false));
@@ -5609,34 +6866,12 @@ class QuickPage {
         }
       });
     };
-    // Mute button, built as SV's on the Sound page (Button(), IconButtonStyle,
-    // 32 DIP, the isolated system QA_Volume icon), in the toggle's Grid cell.
-    auto own = Button(view_, L"Mute system volume");
-    own.Margin(mute.Margin());
-    own.HorizontalAlignment(mute.HorizontalAlignment());
-    own.VerticalAlignment(X::VerticalAlignment::Center);
-    C::Grid::SetColumn(own, C::Grid::GetColumn(mute));
-    C::Grid::SetRow(own, C::Grid::GetRow(mute));
-    own.Content(icon->Isolated());
-    {
-      uint32_t index = 0;
-      if (row.Children().IndexOf(mute, index)) {
-        row.Children().RemoveAt(index);
-        row.Children().InsertAt(index, own);
-      } else
-        row.Children().Append(own);
-      auto weakRow = winrt::make_weak(row);
-      journal_.undo.push_back([weakRow, own, mute, index] {
-        if (auto r = weakRow.get()) {
-          uint32_t i = 0;
-          if (r.Children().IndexOf(own, i))
-            r.Children().RemoveAt(i);
-          if (!r.Children().IndexOf(mute, i))
-            r.Children().InsertAt(std::min(index, r.Children().Size()), mute);
-        }
-      });
-    }
-    quickMute_ = own;
+    // Both glyphs share the Windows toggle and its original command.
+    journal_.Save(mute, C::ContentControl::ContentProperty());
+    quickMute_ = mute;
+    quickGlyph_ = -2;
+    if (quickIcon_)
+      mute.Content(quickIcon_->Isolated());
     // Slider: as master_ on the Sound page; geometry and thin look follow in Sliders().
     C::Slider mine;
     if (auto style = Resource(view_, L"HeaderIconSliderStyle").try_as<X::Style>())
@@ -5650,7 +6885,6 @@ class QuickPage {
     mine.StepFrequency(1);
     mine.SmallChange(slider.SmallChange() > 0 ? slider.SmallChange() : 2);
     mine.LargeChange(10);
-    mine.IsThumbToolTipEnabled(true);
     mine.Margin(slider.Margin());
     mine.HorizontalAlignment(X::HorizontalAlignment::Stretch);
     mine.VerticalAlignment(X::VerticalAlignment::Center);
@@ -5659,7 +6893,8 @@ class QuickPage {
     C::Grid::SetColumnSpan(mine, C::Grid::GetColumnSpan(slider));
     {
       auto n = std::wstring(X::Automation::AutomationProperties::GetName(slider));
-      X::Automation::AutomationProperties::SetName(mine, n.empty() ? L"Volume" : n.c_str());
+      X::Automation::AutomationProperties::SetName(
+          mine, n.empty() ? sound::Text(L"Volume", L"Громкость", L"Volumen", L"Lautstärke", L"Volume", L"音量") : n.c_str());
     }
     mine.Value(slider.Value());
     hide(slider);
@@ -5685,35 +6920,35 @@ class QuickPage {
                              } catch (...) {
                                Wh_Log(L"QuickVolumeSetError %08X", winrt::to_hresult());
                              }
-                             if (quickIcon_)
-                               quickIcon_->Update(value, value <= 0, quickAvailable_);
+                             QuickGlyph(value, value <= 0);
                            }));
-    Keep(mine.PointerWheelChanged(
-        winrt::auto_revoke, [this](auto &&, X::Input::PointerRoutedEventArgs const &args) {
+    volumeTip_.Watch(view_, mine, journal_, revoke_);
+    ListenVolumeWheel(
+        mine, [this](auto &&, X::Input::PointerRoutedEventArgs const &args) {
           try {
             auto s = quickSlider_;
-            if (!s || args.Handled() || !s.IsEnabled())
+            if (!s || !s.IsEnabled())
               return;
             auto point = args.GetCurrentPoint(s);
             if (point.Properties().IsHorizontalMouseWheel())
               return;
-            double delta = point.Properties().MouseWheelDelta() / 120.;
+            int delta = point.Properties().MouseWheelDelta();
             if (!delta)
               return;
-            s.Value(std::clamp(s.Value() + delta * s.SmallChange(), s.Minimum(), s.Maximum()));
+            if (args.Handled()) {
+              volumeTip_.Show(view_, s, s.Value());
+              return;
+            }
             args.Handled(true);
+            s.Value(volumeWheel_.Next(s.Value(), s.Minimum(), s.Maximum(), delta,
+                                      settings_.volumeWheelStep));
+            volumeTip_.Show(view_, s, s.Value());
           } catch (...) {
+            Wh_Log(L"QuickVolumeWheelError %08X", winrt::to_hresult());
           }
-        }));
-    Keep(own.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
-      try {
-        if (quickVolume_)
-          quickVolume_->ToggleMute();
-      } catch (...) {
-        Wh_Log(L"QuickMuteToggleError %08X", winrt::to_hresult());
-      }
+        }, revoke_);
+    Keep(mute.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
       quickUserAt_ = 0;
-      RefreshVolume();
     }));
   }
   void Sliders(C::Grid const &l1) {
@@ -5724,7 +6959,7 @@ class QuickPage {
     if (!grid)
       return;
     if (First(grid, 2)) {
-      // Top 2.4: the All settings plate 11.2 DIP below the divider, as the
+      // Top 2.4: the Settings plate 11.2 DIP below the divider, as the
       // Volume mixer heading on Sound. The bottom margin and the brightness row
       // height are corrected by AlignSteps for whole-pixel steps.
       Set(grid, X::FrameworkElement::MarginProperty(),
@@ -5740,12 +6975,13 @@ class QuickPage {
                                       winrt::box_value(X::Thickness{4, -4, 0, -4})));
       Set(grid, C::ItemsControl::ItemContainerStyleProperty(), item);
       Set(grid, C::ListViewBase::HeaderTransitionsProperty(), M::Animation::TransitionCollection());
-      // The grid starts at 12 DIP so the All settings plate (from 12) is not
+      // The grid starts at 12 DIP so the Settings plate (from 12) is not
       // clipped by it; header and native items move back by 4.
       header_ = C::StackPanel();
       header_.Margin({4, 0, 0, 0});
       header_.Children().Append(SettingsRow());
-      header_.Children().Append(BrightnessRow());
+      if (ddc_)
+        header_.Children().Append(BrightnessRow());
       Set(grid, C::ListViewBase::HeaderProperty(), header_);
     }
     // The header presenter left-aligns its content by default.
@@ -5762,10 +6998,14 @@ class QuickPage {
       return;
     if (First(l2, 4)) {
       SmallButton(l2);
-      Set(l2, C::ContentControl::ContentProperty(), Icon(L"sliders-horizontal"));
-      Set(l2, C::ToolTipService::ToolTipProperty(), winrt::box_value(L"Sound settings"));
-      Set(l2, X::Automation::AutomationProperties::NameProperty(),
-          winrt::box_value(L"Sound settings"));
+      quickMixerButton_ = l2;
+      originalMixerIcon_ = l2.Content();
+      journal_.Save(l2, C::ContentControl::ContentProperty());
+      if (settings_.altQuickMixer)
+        l2.Content(Icon(L"sliders-horizontal"));
+      auto name = winrt::box_value(sound::Text(L"Sound", L"Звук", L"Sonido", L"Sound", L"Som", L"声音"));
+      Set(l2, X::Automation::AutomationProperties::NameProperty(), name);
+      Set(l2, C::ToolTipService::ToolTipProperty(), name);
       if (auto row = Parent(l2).try_as<C::Panel>())
         for (auto const &child : row.Children())
           if (auto toggle = child.try_as<P::ToggleButton>())
@@ -5997,8 +7237,10 @@ class QuickPage {
         });
       }
       DarkBlock(l1);
+      TileRows(l1);
       Pager();
       Sliders(l1);
+      PlaceDisplayActions();
       Footer();
       FrameReveal();
       if (bright_ && bright_.IsLoaded() && !thinSliders_.count(winrt::get_abi(bright_))) {
@@ -6012,13 +7254,14 @@ class QuickPage {
   }
 
 public:
-  QuickPage(X::FrameworkElement const &view, HWND host) : view_(view), host_(host) {
-    try {
-      ddc_ = std::make_unique<Ddc>();
-      monitor_ = MonitorFromWindow(host_, MONITOR_DEFAULTTOPRIMARY);
-      ddc_->Read(monitor_);
-    } catch (...) {
-      Wh_Log(L"QuickDdcError %08X", winrt::to_hresult());
+  QuickPage(X::FrameworkElement const &view, HWND host)
+      : view_(view), host_(host), settings_(SettingsSnapshot()) {
+    if (settings_.brightnessEnabled) {
+      try {
+        ddc_ = std::make_unique<Ddc>();
+      } catch (...) {
+        Wh_Log(L"QuickDdcError %08X", winrt::to_hresult());
+      }
     }
     // Before the first frame of every opening: new templates appear while the
     // panel is laid out (Track marks the page dirty); LayoutUpdated precedes render.
@@ -6047,11 +7290,36 @@ public:
   }
   X::FrameworkElement View() const { return view_; }
   void Dirty() { dirty_ = true; }
+  bool ApplySettings(ModSettings const &next) {
+    if (settings_.brightnessEnabled != next.brightnessEnabled ||
+        settings_.quickActionRows != next.quickActionRows ||
+        settings_.quickShortcuts != next.quickShortcuts)
+      return false;
+    auto previous = std::exchange(settings_, next);
+    if (quickMixerButton_ && previous.altQuickMixer != next.altQuickMixer)
+      quickMixerButton_.Content(next.altQuickMixer ? IInspectable(Icon(L"sliders-horizontal"))
+                                                 : originalMixerIcon_);
+    if (quickMute_ && previous.altQuickVolume != next.altQuickVolume) {
+      quickIcon_.reset();
+      quickGlyph_ = -2;
+      if (next.altQuickVolume)
+        try {
+          quickIcon_ = std::make_shared<AnimatedVolume>();
+          quickMute_.Content(quickIcon_->Isolated());
+        } catch (...) {
+          quickIcon_.reset();
+          Wh_Log(L"QuickVolumeIconError %08X", winrt::to_hresult());
+        }
+      RefreshVolume();
+    }
+    return true;
+  }
   void Refresh() {
     visible_ = PanelVisible();
     if (dirty_ || visible_)
       Ensure();
     try {
+      ContinueNightSearch();
       PollNight();
       Brightness(false);
     } catch (...) {
@@ -6061,6 +7329,12 @@ public:
     if (restoring_)
       return;
     restoring_ = true;
+    volumeTip_.Hide();
+    try {
+      FinishNightSearch();
+    } catch (...) {
+      Wh_Log(L"QuickNightPagerRestoreError %08X", winrt::to_hresult());
+    }
     if (quickVolume_) {
       quickVolume_->Close();
       quickVolume_.reset();
@@ -6068,11 +7342,6 @@ public:
     quickSlider_ = nullptr;
     quickMute_ = nullptr;
     quickIcon_ = nullptr;
-    if (brightIdle_) {
-      brightIdle_.Stop();
-      brightIdle_.Tick(brightIdleTick_);
-      brightIdle_ = nullptr;
-    }
     ddc_.reset();
     for (auto &r : revoke_)
       try {
@@ -6080,6 +7349,7 @@ public:
       } catch (...) {
       }
     revoke_.clear();
+    unavailableBrightness_.Restore();
     journal_.Restore();
     view_ = nullptr;
   }
@@ -6173,25 +7443,28 @@ inline bool Dispatch(HWND window, std::function<void()> action) {
 }
 
 struct Runtime;
-inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
+inline void CALLBACK PanelVisibilityChanged(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
 inline std::mutex runtimesMutex;
 inline std::map<DWORD, Runtime *> runtimes;
 struct Runtime {
   HWND window = nullptr, pulseWindow = nullptr;
+  HWND presentedSound = nullptr;
   winrt::Windows::UI::Core::CoreDispatcher dispatcher{nullptr};
-  HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr;
+  HWINEVENTHOOK showHook = nullptr, uncloakHook = nullptr, hideHook = nullptr, cloakHook = nullptr;
   X::DispatcherTimer timer{nullptr}, discoveryTimer{nullptr};
   winrt::event_token tick{}, discoveryTick{};
   std::vector<winrt::weak_ref<X::FrameworkElement>> discoveryCandidates;
   unsigned discoveryAttempts = 0;
   bool busy = false, discovering = false;
   winrt::weak_ref<X::FrameworkElement> l2frame;
-  int64_t frameToken = 0;
+  int64_t frameToken = 0, frameVisibilityToken = 0;
   std::vector<std::unique_ptr<SoundPage>> pages;
   std::vector<std::unique_ptr<QuickPage>> quickPages;
   struct PageWatch {
     winrt::weak_ref<X::FrameworkElement> page;
-    winrt::event_token loaded{}, layout{};
+    winrt::event_token loading{}, loaded{}, layout{};
+    std::unique_ptr<Journal> firstFrame;
+    ULONGLONG hiddenAt = 0;
   };
   std::vector<PageWatch> pageWatches;
   struct ViewWatch {
@@ -6200,8 +7473,45 @@ struct Runtime {
   };
   std::vector<ViewWatch> viewWatches;
   std::shared_ptr<VolumePulse> volumePulse;
+  ModSettings appliedSettings = SettingsSnapshot();
   bool volumeDuringRefresh = false;
   bool Hidden() const { return !WindowShown(window); }
+  void ClearSoundPresentation() {
+    if (presentedSound)
+      RemovePropW(presentedSound, soundPageProperty);
+    presentedSound = nullptr;
+  }
+  void ReportSoundPresentation(DWORD shownAt = 0) {
+    auto frame = l2frame.get().try_as<C::ContentControl>();
+    auto page = frame ? frame.Content().try_as<X::FrameworkElement>() : nullptr;
+    bool sound = page && page.IsLoaded() && page.XamlRoot() &&
+                 Class(page).find(L"ControlCenter.FullScreenPage") != std::wstring::npos &&
+                 (page.FindName(L"OutputGroupTitle") || Named(page, L"OutputGroupTitle"));
+    if (sound)
+      for (auto element = page; element; element = Parent(element))
+        if (element.Visibility() != X::Visibility::Visible ||
+            (element != page && element.Opacity() <= 0)) {
+          sound = false;
+          break;
+        }
+    auto monitor = sound && window ? MonitorFromWindow(window, MONITOR_DEFAULTTONULL) : nullptr;
+    bool shown = monitor && !Hidden();
+    if (presentedSound && (!shown || presentedSound != window))
+      ClearSoundPresentation();
+    if (shown && (GetPropW(window, soundPageProperty) == monitor ||
+                  SetPropW(window, soundPageProperty, monitor)))
+      presentedSound = window;
+    if (!monitor || (!shown && !shownAt))
+      return;
+    // WinEvent callbacks can be queued behind a close. A show event for the
+    // current Sound page is still evidence that the request activated it.
+    for (auto type : {L"Shell_TrayWnd", L"Shell_SecondaryTrayWnd"})
+      for (HWND taskbar = nullptr; (taskbar = FindWindowExW(nullptr, taskbar, type, nullptr));)
+        if (auto token = reinterpret_cast<UINT_PTR>(GetPropW(taskbar, soundRequestProperty));
+            token && MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == monitor &&
+            (!shownAt || SoundEventMatchesRequest(token, shownAt)))
+          PostMessageW(taskbar, soundShownMessage, token, reinterpret_cast<LPARAM>(monitor));
+  }
   void Wake() {
     if (timer && !stopping) {
       timer.Interval(std::chrono::milliseconds(200));
@@ -6227,6 +7537,8 @@ struct Runtime {
       return 0;
     }
     if (message == WM_NCDESTROY) {
+      if (self->presentedSound == handle)
+        self->ClearSoundPresentation();
       if (self->pulseWindow == handle) {
         if (self->volumePulse)
           self->volumePulse->active = false;
@@ -6269,10 +7581,14 @@ struct Runtime {
     discoveryTimer.Interval(std::chrono::milliseconds(1));
     discoveryTick = discoveryTimer.Tick([this](auto &&, auto &&) { DiscoverPending(); });
     DWORD process = GetCurrentProcessId(), thread = GetCurrentThreadId();
-    showHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, nullptr, PanelShown, process,
-                               thread, WINEVENT_OUTOFCONTEXT);
-    uncloakHook = SetWinEventHook(0x8018 /*EVENT_OBJECT_UNCLOAKED*/, 0x8018, nullptr, PanelShown,
-                                  process, thread, WINEVENT_OUTOFCONTEXT);
+    auto watch = [process, thread](DWORD event) {
+      return SetWinEventHook(event, event, nullptr, PanelVisibilityChanged, process, thread,
+                             WINEVENT_OUTOFCONTEXT);
+    };
+    showHook = watch(EVENT_OBJECT_SHOW);
+    uncloakHook = watch(EVENT_OBJECT_UNCLOAKED);
+    hideHook = watch(EVENT_OBJECT_HIDE);
+    cloakHook = watch(EVENT_OBJECT_CLOAKED);
     std::lock_guard lock(runtimesMutex);
     runtimes[thread] = this;
   }
@@ -6281,12 +7597,12 @@ struct Runtime {
     if (!frame)
       return;
     auto page = frame.Content().try_as<X::FrameworkElement>();
+    ReportSoundPresentation();
     if (!page || Class(page).find(L"ControlCenter.FullScreenPage") == std::wstring::npos)
       return;
     WatchPage(page);
     Wake();
-    if (page.IsLoaded())
-      BeforeDisplay(page, true);
+    BeforeDisplay(page, true);
   }
   void WatchFrame(X::FrameworkElement const &frame) {
     if (auto current = l2frame.get(); current && current == frame)
@@ -6303,19 +7619,37 @@ struct Runtime {
           } catch (...) {
           }
         });
+    frameVisibilityToken = frame.RegisterPropertyChangedCallback(
+        X::UIElement::VisibilityProperty(),
+        [this](X::DependencyObject const &, X::DependencyProperty const &) {
+          try {
+            ReportSoundPresentation();
+          } catch (...) {
+            Wh_Log(L"Sound page visibility: %08X", winrt::to_hresult());
+          }
+        });
     OnFrameContent(frame);
   }
   void UnwatchFrame() {
-    if (auto frame = l2frame.get(); frame && frameToken)
-      try {
-        frame.UnregisterPropertyChangedCallback(C::ContentControl::ContentProperty(), frameToken);
-      } catch (...) {
-      }
+    ClearSoundPresentation();
+    if (auto frame = l2frame.get())
+      for (auto const &[property, token] :
+           {std::pair{C::ContentControl::ContentProperty(), frameToken},
+            std::pair{X::UIElement::VisibilityProperty(), frameVisibilityToken}})
+        if (token)
+          try {
+            frame.UnregisterPropertyChangedCallback(property, token);
+          } catch (...) {
+          }
     l2frame = nullptr;
-    frameToken = 0;
+    frameToken = frameVisibilityToken = 0;
+  }
+  bool IsCurrentPage(X::FrameworkElement const &page) const {
+    auto frame = l2frame.get().try_as<C::ContentControl>();
+    return !frame || frame.Content() == page;
   }
   void PreparePage(X::FrameworkElement const &page, bool opening) {
-    if (!page.IsLoaded() || Retired(page))
+    if (Retired(page) || !IsCurrentPage(page))
       return;
     for (auto const &item : pages)
       if (item->Page() == page) {
@@ -6325,15 +7659,21 @@ struct Runtime {
           item->BeforeRender();
         return;
       }
-    if (!Named(page, L"OutputGroupTitle"))
+    if ((!page.IsLoaded() && !Parent(page)) || !Named(page, L"OutputGroupTitle"))
       return;
+    RetireOthers(page);
     auto pulse = volumePulse;
     auto patch = std::make_unique<SoundPage>(page, window, [pulse] {
       if (pulse)
         pulse->Post();
     });
     if (patch->Apply()) {
+      if (auto watch = std::find_if(pageWatches.begin(), pageWatches.end(),
+                                   [&](auto const &item) { return item.page.get() == page; });
+          watch != pageWatches.end())
+        watch->firstFrame.reset();
       patch->PrepareInitialLayout();
+      patch->BeforeRender();
       pages.push_back(std::move(patch));
       Wh_Log(L"Sound page attached through ControlCenter symbols");
     }
@@ -6344,7 +7684,7 @@ struct Runtime {
     busy = true;
     try {
       EnsureVolumePulse();
-      RetirePending();
+      ReportSoundPresentation();
       PreparePage(page, opening);
     } catch (...) {
       Wh_Log(L"Initial native layout: %08X", winrt::to_hresult());
@@ -6356,10 +7696,8 @@ struct Runtime {
         volumePulse->Post();
     }
   }
-  // Windows builds a new Sound FullScreenPage for every opening and the old one
-  // stays loaded. If every old page kept its patch, timers and layout handlers,
-  // each opening would get slower. A newly created page retires all others:
-  // patch restored, handlers removed, never patched again.
+  // The shell can retain old page objects. Only a new current Sound page
+  // retires them and stops their handlers.
   std::vector<winrt::weak_ref<X::FrameworkElement>> retired;
   bool Retired(X::FrameworkElement const &page) {
     for (auto it = retired.begin(); it != retired.end();) {
@@ -6382,6 +7720,7 @@ struct Runtime {
         continue;
       }
       if (existing) {
+        existing.Loading(it->loading);
         existing.Loaded(it->loaded);
         existing.LayoutUpdated(it->layout);
         retired.push_back(it->page);
@@ -6399,7 +7738,6 @@ struct Runtime {
       it = pages.erase(it);
     }
   }
-  winrt::weak_ref<X::FrameworkElement> newestPage;
   // Same for Quick Settings, in case the shell also rebuilds ControlCenterView.
   winrt::weak_ref<X::FrameworkElement> newestQuick;
   void RetireQuick() {
@@ -6416,14 +7754,9 @@ struct Runtime {
       it = quickPages.erase(it);
     }
   }
-  void RetirePending() {
-    if (auto page = newestPage.get()) {
-      newestPage = nullptr;
-      RetireOthers(page);
-    }
-  }
   void WatchPage(X::FrameworkElement const &page) {
-    if (Retired(page))
+    // Discovery also visits pages that the shell is building off-screen.
+    if (Retired(page) || !IsCurrentPage(page))
       return;
     for (auto it = pageWatches.begin(); it != pageWatches.end();)
       if (auto existing = it->page.get()) {
@@ -6432,12 +7765,22 @@ struct Runtime {
         ++it;
       } else
         it = pageWatches.erase(it);
-    // Retirement is deferred until BeforeDisplay or Refresh. BeforeDisplay
-    // (Loaded/LayoutUpdated of the new page) and Refresh retire the others.
-    newestPage = winrt::make_weak(page);
     auto weak = winrt::make_weak(page);
     PageWatch watch;
     watch.page = weak;
+    // Content can be assigned before Loaded, and its stock layout can be
+    // rendered during the native entrance. Hold that content until Apply()
+    // has rebuilt it. The native surface and its animation remain active.
+    if (page.FindName(L"OutputGroupTitle") || Named(page, L"OutputGroupTitle")) {
+      watch.firstFrame = std::make_unique<Journal>();
+      watch.firstFrame->Save(page, X::UIElement::OpacityProperty());
+      page.Opacity(0);
+      watch.hiddenAt = GetTickCount64();
+    }
+    watch.loading = page.Loading([this, weak](auto &&, auto &&) {
+      if (auto page = weak.get())
+        BeforeDisplay(page, true);
+    });
     watch.loaded = page.Loaded([this, weak](auto &&, auto &&) {
       if (auto page = weak.get())
         BeforeDisplay(page, true);
@@ -6581,16 +7924,18 @@ struct Runtime {
     busy = true;
     try {
       EnsureVolumePulse();
-      RetirePending();
+      ReportSoundPresentation();
       RetireQuick();
-      for (auto it = pages.begin(); it != pages.end();)
-        if (!(*it)->Alive()) {
-          (*it)->Abandon();
-          it = pages.erase(it);
-        } else {
-          (*it)->Refresh();
-          ++it;
-        }
+      ApplySettings();
+      for (auto &watch : pageWatches)
+        if (watch.firstFrame && GetTickCount64() - watch.hiddenAt >= 400)
+          watch.firstFrame.reset();
+      // Loading and layout events can temporarily detach the page or its
+      // output heading while the frame still owns it. Preserve its controls
+      // and handlers. RetireOthers handles replacement of the frame content.
+      for (auto const &page : pages)
+        if (page->Loaded())
+          page->Refresh();
       for (auto const &q : quickPages)
         q->Refresh();
     } catch (...) {
@@ -6612,6 +7957,22 @@ struct Runtime {
         volumePulse->Post();
     }
   }
+  void ApplySettings() {
+    auto next = SettingsSnapshot();
+    if (appliedSettings == next)
+      return;
+    for (auto const &page : pages)
+      page->ApplySettings(next);
+    for (auto &quick : quickPages)
+      if (!quick->ApplySettings(next)) {
+        auto view = quick->View();
+        quick->Restore();
+        quick = std::make_unique<QuickPage>(view, window);
+      }
+    appliedSettings = std::move(next);
+    Wh_Log(L"Applied settings to %zu Quick Settings views and %zu Sound pages",
+           quickPages.size(), pages.size());
+  }
   void Stop() {
     if (timer) {
       timer.Stop();
@@ -6622,10 +7983,10 @@ struct Runtime {
       discoveryTimer.Tick(discoveryTick);
     }
     discoveryCandidates.clear();
-    for (auto hook : {showHook, uncloakHook})
+    for (auto hook : {showHook, uncloakHook, hideHook, cloakHook})
       if (hook)
         UnhookWinEvent(hook);
-    showHook = uncloakHook = nullptr;
+    showHook = uncloakHook = hideHook = cloakHook = nullptr;
     if (volumePulse)
       volumePulse->active = false;
     if (pulseWindow && IsWindow(pulseWindow))
@@ -6640,6 +8001,7 @@ struct Runtime {
     viewWatches.clear();
     for (auto const &watch : pageWatches)
       if (auto page = watch.page.get()) {
+        page.Loading(watch.loading);
         page.Loaded(watch.loaded);
         page.LayoutUpdated(watch.layout);
       }
@@ -6661,17 +8023,41 @@ struct Runtime {
 // UI-thread state is explicitly stopped on unload; no XAML destruction during
 // process/thread termination after the other threads have already disappeared.
 [[clang::no_destroy]] inline thread_local std::unique_ptr<Runtime> runtime;
-inline void CALLBACK PanelShown(HWINEVENTHOOK, DWORD, HWND handle, LONG object, LONG, DWORD,
-                                DWORD) {
-  if (stopping || object != OBJID_WINDOW || !runtime || !handle)
+inline void CALLBACK PanelVisibilityChanged(HWINEVENTHOOK, DWORD event, HWND handle, LONG object,
+                                            LONG child, DWORD, DWORD shownAt) {
+  if (stopping || object != OBJID_WINDOW || child != CHILDID_SELF || !runtime || !handle)
     return;
   WCHAR name[96]{};
   GetClassNameW(handle, name, ARRAYSIZE(name));
   if (_wcsicmp(name, L"ControlCenterWindow"))
     return;
+  if (event == EVENT_OBJECT_HIDE || event == EVENT_OBJECT_CLOAKED) {
+    if (runtime->presentedSound == handle)
+      runtime->ClearSoundPresentation();
+    return;
+  }
   // This is only the visibility handle. EnsureVolumePulse owns pulseWindow.
   runtime->window = handle;
+  try {
+    runtime->ReportSoundPresentation(shownAt);
+  } catch (...) {
+    Wh_Log(L"Sound page presentation: %08X", winrt::to_hresult());
+  }
   runtime->Wake();
+}
+inline void RefreshHostSettings() {
+  std::vector<HWND> windows;
+  {
+    std::lock_guard lock(runtimesMutex);
+    for (auto const &[thread, state] : runtimes)
+      if (auto handle = ThreadWindow(thread))
+        windows.push_back(handle);
+  }
+  for (auto window : windows)
+    Dispatch(window, [] {
+      if (runtime)
+        runtime->Wake();
+    });
 }
 inline void StopBridge() {
   std::vector<std::pair<DWORD, Runtime *>> copy;
@@ -6794,6 +8180,8 @@ inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   };
   bool ok = WindhawkUtils::HookSymbols(controlCenter, controlCenterDllHooks,
                                        ARRAYSIZE(controlCenterDllHooks));
+  if (ok)
+    HookQuickRows(controlCenter);
   if (ok && applyNow)
     ok = Wh_ApplyHookOperations();
   discoveryState = ok ? 2 : 3;
@@ -6845,7 +8233,6 @@ inline void StopHost() {
 
 #include <ws2ipdef.h>
 #include <iphlpapi.h>
-#include <optional>
 namespace native::tray {
 inline std::atomic<bool> stopping{false}, moduleHooked{false};
 
@@ -7003,6 +8390,26 @@ inline X::XamlRoot Root(HWND taskbar) {
     decref(shared[1]);
   return root;
 }
+struct SoundTap {
+  HWND taskbar;
+  HMONITOR monitor;
+  UINT_PTR token;
+  void *self;
+  X::FrameworkElement icon;
+  IInspectable sender;
+  X::Input::TappedRoutedEventArgs args;
+  bool handled;
+  HWND foreground;
+};
+[[clang::no_destroy]] inline thread_local std::optional<SoundTap> soundTap;
+inline std::atomic<UINT_PTR> nextSoundTap{0};
+inline void CancelSoundTap() {
+  if (!soundTap)
+    return;
+  KillTimer(soundTap->taskbar, soundTap->token);
+  RemovePropW(soundTap->taskbar, soundRequestProperty);
+  soundTap.reset();
+}
 struct Record {
   DWORD thread = 0;
   HWND taskbar = nullptr;
@@ -7012,6 +8419,9 @@ struct Record {
   X::FrameworkElement visual{nullptr};
   X::DispatcherTimer timer{nullptr};
   winrt::event_token loaded{}, tick{};
+  IInspectable middleGesture{nullptr};
+  bool suppressMiddleTap = false;
+  ULONGLONG middleReleasedAt = 0;
   Journal glyphJournal;
   std::shared_ptr<AnimatedVolume> animated;
   unsigned redrawn = 0;
@@ -7023,6 +8433,15 @@ struct Record {
   bool networkSeen = false; // kind: 1 volume, 2 wired network
 };
 [[clang::no_destroy]] inline std::vector<std::shared_ptr<Record>> records;
+struct MenuEntry {
+  DWORD thread;
+  winrt::Windows::UI::Core::CoreDispatcher dispatcher;
+  winrt::weak_ref<C::MenuFlyout> menu;
+  winrt::weak_ref<C::MenuFlyoutItem> item;
+  winrt::weak_ref<C::MenuFlyoutSeparator> separator;
+  winrt::event_token click;
+};
+[[clang::no_destroy]] inline std::vector<MenuEntry> menuEntries;
 inline bool VolumeLeaf(X::DependencyObject const &node) {
   winrt::hstring value;
   if (auto text = node.try_as<C::TextBlock>())
@@ -7170,6 +8589,183 @@ inline bool InControlCenter(X::FrameworkElement element) {
   }
   return false;
 }
+inline void AttachMiddleMute(std::shared_ptr<Record> const &record, X::FrameworkElement const &icon) {
+  std::weak_ptr<Record> weak = record;
+  auto handler = winrt::box_value(X::Input::PointerEventHandler(
+      [weak](IInspectable const &sender, X::Input::PointerRoutedEventArgs const &args) {
+        try {
+          auto record = weak.lock();
+          if (!record || stopping || !SettingsSnapshot().trayMiddleClickMute)
+            return;
+          auto element = sender.as<X::FrameworkElement>();
+          auto point = args.GetCurrentPoint(element);
+          using Kind = winrt::Windows::UI::Input::PointerUpdateKind;
+          auto kind = point.Properties().PointerUpdateKind();
+          if (kind == Kind::LeftButtonPressed || kind == Kind::RightButtonPressed) {
+            record->suppressMiddleTap = false;
+          } else if (kind == Kind::MiddleButtonPressed &&
+                     Find(element, [](auto const &node) { return VolumeLeaf(node); })) {
+            record->suppressMiddleTap = true;
+            record->middleReleasedAt = 0;
+            args.Handled(true);
+            if (audio && audio->Get().masterAvailable)
+              audio->Send({sound::Action::ToggleEndpointMute});
+          } else if (kind == Kind::MiddleButtonReleased && record->suppressMiddleTap) {
+            record->middleReleasedAt = GetTickCount64();
+            args.Handled(true);
+          }
+        } catch (...) {
+          Wh_Log(L"TrayMiddleMuteError %08X", winrt::to_hresult());
+        }
+      }));
+  icon.AddHandler(X::UIElement::PointerPressedEvent(), handler, true);
+  try {
+    icon.AddHandler(X::UIElement::PointerReleasedEvent(), handler, true);
+  } catch (...) {
+    icon.RemoveHandler(X::UIElement::PointerPressedEvent(), handler);
+    throw;
+  }
+  record->middleGesture = handler;
+}
+inline bool ConsumeMiddleTap(X::FrameworkElement const &icon) {
+  std::lock_guard lock(recordsMutex);
+  for (auto const &record : records)
+    if (record->thread == GetCurrentThreadId() && record->suppressMiddleTap &&
+        record->icon.get() == icon) {
+      record->suppressMiddleTap = false;
+      // If XAML didn't emit a tap for the middle release, discard the old
+      // gesture before a later activation (for example from the keyboard).
+      return !record->middleReleasedAt || GetTickCount64() - record->middleReleasedAt < 500;
+    }
+  return false;
+}
+inline void AppendTrayMenuEntry(C::MenuFlyout const &menu, bool soundMenu) {
+  PCWSTR name = soundMenu ? L"RefinedSoundControlPanel" : L"RefinedDeviceManager";
+  auto items = menu.Items();
+  for (auto const &entry : items)
+    if (entry.Name() == name)
+      return;
+  C::MenuFlyoutItem item;
+  item.Name(name);
+  item.Text(soundMenu
+                ? sound::Text(L"More sound settings", L"Дополнительные параметры звука",
+                             L"Más opciones de configuración de sonido", L"Weitere Soundeinstellungen",
+                             L"Mais configurações de som", L"更多声音设置")
+                : sound::Text(L"Device Manager", L"Диспетчер устройств",
+                             L"Administrador de dispositivos", L"Geräte-Manager",
+                             L"Gerenciador de Dispositivos", L"设备管理器"));
+  C::FontIcon icon;
+  icon.FontFamily(M::FontFamily(L"Segoe Fluent Icons"));
+  icon.Glyph(soundMenu ? L"\ue767" : L"\ue772");
+  item.Icon(icon);
+  C::MenuFlyoutSeparator separator{nullptr};
+  if (items.Size() && !items.GetAt(items.Size() - 1).try_as<C::MenuFlyoutSeparator>())
+    separator = C::MenuFlyoutSeparator();
+  MenuEntry entry{GetCurrentThreadId(), item.Dispatcher(), winrt::make_weak(menu),
+                  winrt::make_weak(item), winrt::make_weak(separator), {}};
+  entry.click = item.Click([soundMenu](auto &&, auto &&) {
+    ShellExecuteW(nullptr, L"open", soundMenu ? L"control.exe" : L"devmgmt.msc",
+                  soundMenu ? L"mmsys.cpl" : nullptr, nullptr, SW_SHOWNORMAL);
+  });
+  try {
+    std::lock_guard lock(recordsMutex);
+    std::erase_if(menuEntries, [&](auto const &e) {
+      return e.thread == entry.thread && !e.item.get() && !e.separator.get();
+    });
+    menuEntries.push_back(entry);
+  } catch (...) {
+    item.Click(entry.click);
+    throw;
+  }
+  try {
+    if (separator)
+      items.Append(separator);
+    items.Append(item);
+  } catch (...) {
+    uint32_t index;
+    if (separator && items.IndexOf(separator, index))
+      items.RemoveAt(index);
+    throw;
+  }
+}
+inline std::wstring TrayString(PCWSTR key) {
+  WCHAR file[MAX_PATH]{};
+  auto module = GetModuleHandleW(L"SystemTray.dll");
+  if (!module || !GetModuleFileNameW(module, file, ARRAYSIZE(file)) ||
+      !PathRemoveFileSpecW(file))
+    return {};
+  auto uri = std::wstring(L"@{") + file +
+             L"\\resources.pri?ms-resource://MicrosoftWindows.Client.Core/SystemTray/Resources/" +
+             key + L"}";
+  WCHAR value[256]{};
+  if (FAILED(SHLoadIndirectString(uri.c_str(), value, ARRAYSIZE(value), nullptr)))
+    return {};
+  return value;
+}
+inline bool TrayMenuHas(C::MenuFlyout const &menu, PCWSTR key) {
+  auto text = TrayString(key);
+  if (!text.empty())
+    for (auto const &entry : menu.Items())
+      if (auto item = entry.try_as<C::MenuFlyoutItem>(); item && item.Text() == text)
+        return true;
+  return false;
+}
+inline void ExtendTrayMenu(void *self) {
+  if (stopping)
+    return;
+  try {
+    IInspectable flyout{nullptr};
+    winrt::copy_from_abi(flyout, self);
+    auto menu = flyout.try_as<C::MenuFlyout>();
+    if (!menu || !menu.Items().Size())
+      return;
+    auto windows = Taskbars();
+    if (std::none_of(windows.begin(), windows.end(), [](auto window) {
+          return GetWindowThreadProcessId(window, nullptr) == GetCurrentThreadId();
+        }))
+      return;
+    // ShowAt is shared by other tray flyouts. Match the native command labels.
+    if (TrayMenuHas(menu, L"VolumeContextMenuVolumeMixer") &&
+        TrayMenuHas(menu, L"VolumeContextMenuSoundSettings"))
+      AppendTrayMenuEntry(menu, true);
+    else if (TrayMenuHas(menu, L"NetworkContextMenuSettings") ||
+             TrayMenuHas(menu, L"BatteryContextMenuPowerSettings"))
+      AppendTrayMenuEntry(menu, false);
+  } catch (...) {
+    Wh_Log(L"TrayMenuError %08X", winrt::to_hresult());
+  }
+}
+using ShowFlyout = HRESULT(WINAPI *)(void *, void *);
+using ShowFlyoutWithOptions = HRESULT(WINAPI *)(void *, void *, void *);
+inline ShowFlyout originalShowFlyout = nullptr;
+inline ShowFlyoutWithOptions originalShowFlyoutWithOptions = nullptr;
+inline HRESULT WINAPI ShowTrayFlyout(void *self, void *target) {
+  ExtendTrayMenu(self);
+  return originalShowFlyout(self, target);
+}
+inline HRESULT WINAPI ShowTrayFlyoutWithOptions(void *self, void *target, void *options) {
+  ExtendTrayMenu(self);
+  return originalShowFlyoutWithOptions(self, target, options);
+}
+inline void HookTrayMenus() {
+  try {
+    C::MenuFlyout flyout;
+    auto base = flyout.as<P::IFlyoutBase>();
+    auto withOptions = flyout.as<P::IFlyoutBase5>();
+    // Slots from the stable Windows.UI.Xaml WinRT ABI (including IInspectable).
+    auto table = *reinterpret_cast<void ***>(winrt::get_abi(base));
+    auto table5 = *reinterpret_cast<void ***>(winrt::get_abi(withOptions));
+    bool basic = WindhawkUtils::SetFunctionHook(reinterpret_cast<ShowFlyout>(table[14]),
+                                               ShowTrayFlyout, &originalShowFlyout);
+    bool options = WindhawkUtils::SetFunctionHook(
+        reinterpret_cast<ShowFlyoutWithOptions>(table5[12]), ShowTrayFlyoutWithOptions,
+        &originalShowFlyoutWithOptions);
+    if (!(basic || options) || !Wh_ApplyHookOperations())
+      Wh_Log(L"Tray menu hook unavailable");
+  } catch (...) {
+    Wh_Log(L"TrayMenuHookError %08X", winrt::to_hresult());
+  }
+}
 inline void CopySlot(X::FrameworkElement const &to, X::FrameworkElement const &from) {
   to.HorizontalAlignment(from.HorizontalAlignment());
   to.VerticalAlignment(from.VerticalAlignment());
@@ -7290,9 +8886,21 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
       record->timer.Stop();
     return;
   }
+  auto settings = SettingsSnapshot();
+  if (!settings.trayMiddleClickMute)
+    record->suppressMiddleTap = false;
+  if (settings.trayMiddleClickMute && !record->middleGesture && InControlCenter(icon) &&
+      Find(icon, [](auto const &node) { return VolumeLeaf(node); }))
+    try {
+      AttachMiddleMute(record, icon);
+    } catch (...) {
+      Wh_Log(L"TrayVolumeActionsError %08X", winrt::to_hresult());
+    }
   if (record->attached) {
     auto native = record->native.get();
-    if (!native || !native.IsLoaded()) {
+    if (!native || !native.IsLoaded() ||
+        (record->kind == 1 && !settings.altTrayVolume) ||
+        (record->kind == 2 && !settings.altTrayEthernet)) {
       if (auto parent = record->parent.get(); parent && record->visual) {
         uint32_t index;
         if (parent.Children().IndexOf(record->visual, index))
@@ -7318,8 +8926,10 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
     // Use the outermost Grid within this IconView. The replacement must
     // remain outside every native glyph/template branch that we suppress.
     int kind = 1;
-    auto leaf = Find(icon, [](auto const &node) { return VolumeLeaf(node); });
-    if (!leaf) {
+    X::FrameworkElement leaf{nullptr};
+    if (settings.altTrayVolume)
+      leaf = Find(icon, [](auto const &node) { return VolumeLeaf(node); });
+    if (!leaf && settings.altTrayEthernet) {
       int wired = -1;
       leaf = Find(icon, [&wired](auto const &node) {
         int s = NetworkLeaf(node);
@@ -7460,7 +9070,22 @@ inline void Refresh(std::shared_ptr<Record> const &record) {
 }
 inline std::mutex pulsesMutex;
 inline std::map<HWND, std::shared_ptr<VolumePulse>> pulses;
+inline void RetrySoundTap();
 inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l, DWORD_PTR) {
+  if (message == soundShownMessage) {
+    if (soundTap && soundTap->taskbar == window && soundTap->token == w &&
+        reinterpret_cast<LPARAM>(soundTap->monitor) == l)
+      CancelSoundTap();
+    return 0;
+  }
+  if (message == WM_TIMER && soundTap && soundTap->taskbar == window && soundTap->token == w) {
+    try {
+      RetrySoundTap();
+    } catch (...) {
+      Wh_Log(L"Native Sound fallback: %08X", winrt::to_hresult());
+    }
+    return 0;
+  }
   if (message == volumePulseMessage) {
     {
       std::lock_guard lock(pulsesMutex);
@@ -7491,6 +9116,8 @@ inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l
     return 0;
   }
   if (message == WM_NCDESTROY) {
+    if (soundTap && soundTap->taskbar == window)
+      CancelSoundTap();
     {
       std::lock_guard lock(pulsesMutex);
       if (auto it = pulses.find(window); it != pulses.end()) {
@@ -7502,16 +9129,18 @@ inline LRESULT CALLBACK VolumeProc(HWND window, UINT message, WPARAM w, LPARAM l
   }
   return DefSubclassProc(window, message, w, l);
 }
-inline void EnsurePulse(HWND window) {
+inline bool EnsurePulse(HWND window) {
   {
     std::lock_guard lock(pulsesMutex);
     if (pulses.contains(window))
-      return;
+      return true;
   }
   if (WindhawkUtils::SetWindowSubclassFromAnyThread(window, VolumeProc, 0)) {
     std::lock_guard lock(pulsesMutex);
     pulses.emplace(window, std::make_shared<VolumePulse>(window));
+    return true;
   }
+  return false;
 }
 inline void VolumeChanged() {
   std::vector<std::shared_ptr<VolumePulse>> copy;
@@ -7523,6 +9152,24 @@ inline void VolumeChanged() {
   for (auto const &pulse : copy)
     pulse->Post();
 }
+inline void RefreshSettings() {
+  for (auto taskbar : Taskbars())
+    Dispatch(taskbar, [taskbar] {
+      std::vector<std::shared_ptr<Record>> local;
+      {
+        std::lock_guard lock(recordsMutex);
+        for (auto const &record : records)
+          if (record->taskbar == taskbar)
+            local.push_back(record);
+      }
+      for (auto const &record : local)
+        try {
+          Refresh(record);
+        } catch (...) {
+          Wh_Log(L"Tray settings refresh: %08X", winrt::to_hresult());
+        }
+    });
+}
 inline void Observe(X::FrameworkElement const &element, HWND taskbar) {
   if (!element || stopping)
     return;
@@ -7530,7 +9177,7 @@ inline void Observe(X::FrameworkElement const &element, HWND taskbar) {
   {
     std::lock_guard lock(recordsMutex);
     for (auto const &r : records)
-      if (auto current = r->icon.get(); current && current.as<IUnknown>() == element.as<IUnknown>())
+      if (r->thread == GetCurrentThreadId() && r->icon.get() == element)
         return;
   }
   auto record = std::make_shared<Record>();
@@ -7617,11 +9264,15 @@ inline void *WINAPI Constructed(void *self) {
   }
   return result;
 }
-inline void OpenNativeSound() {
+inline bool OpenNativeSound() {
+  auto down = [](int code) { return (GetAsyncKeyState(code) & 0x8000) != 0; };
+  // The shell registers Win+Ctrl+V, including the absence of Alt and Shift.
+  // Let the original tap run if the user's keys would change that chord.
+  if (down(VK_MENU) || down(VK_SHIFT) || down('V'))
+    return false;
   INPUT input[6]{};
   UINT count = 0;
-  bool winHeld = (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0,
-       ctrlHeld = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+  bool winHeld = down(VK_LWIN) || down(VK_RWIN), ctrlHeld = down(VK_CONTROL);
   auto key = [&](WORD code, bool up) {
     input[count].type = INPUT_KEYBOARD;
     input[count].ki.wVk = code;
@@ -7639,6 +9290,7 @@ inline void OpenNativeSound() {
     key(VK_LWIN, true);
   auto sent = SendInput(count, input, sizeof(INPUT));
   Wh_Log(L"Native Sound shortcut: %u/%u events", sent, count);
+  return sent == count;
 }
 // The native handler takes TappedRoutedEventArgs by value. In the MSVC ABI the
 // caller passes the address of a temporary and the callee destroys it; the
@@ -7647,9 +9299,69 @@ inline void OpenNativeSound() {
 // releases the object.
 using NativeTapped = void(WINAPI *)(void *, IInspectable const &, void *);
 inline NativeTapped originalTapped = nullptr;
+inline bool SoundPageShown(HMONITOR monitor) {
+  for (HWND window = nullptr; (window = FindWindowExW(nullptr, window, nullptr, nullptr));)
+    if (GetPropW(window, soundPageProperty) == monitor && WindowShown(window) &&
+        MonitorFromWindow(window, MONITOR_DEFAULTTONULL) == monitor)
+      return true;
+  return false;
+}
+inline HWND SoundTaskbar(X::FrameworkElement const &icon, bool mouse) {
+  auto root = icon.XamlRoot();
+  POINT cursor{};
+  bool haveCursor = mouse && GetCursorPos(&cursor);
+  HWND only = nullptr, underCursor = nullptr;
+  bool multiple = false;
+  for (auto taskbar : Taskbars()) {
+    if (GetWindowThreadProcessId(taskbar, nullptr) != GetCurrentThreadId())
+      continue;
+    if (root && Root(taskbar) == root)
+      return taskbar;
+    RECT bounds{};
+    if (haveCursor && GetWindowRect(taskbar, &bounds) && PtInRect(&bounds, cursor))
+      underCursor = taskbar;
+    multiple |= only != nullptr;
+    only = taskbar;
+  }
+  return multiple ? underCursor : only;
+}
+inline bool AwaitSoundPage(SoundTap tap) {
+  if (!soundShownMessage || !EnsurePulse(tap.taskbar) ||
+      !SetPropW(tap.taskbar, soundRequestProperty, reinterpret_cast<HANDLE>(tap.token)))
+    return false;
+  soundTap.emplace(std::move(tap));
+  if (!SetTimer(soundTap->taskbar, soundTap->token, 1200, nullptr)) {
+    CancelSoundTap();
+    return false;
+  }
+  return true;
+}
+inline bool IsControlCenterWindow(HWND window) {
+  WCHAR name[48]{};
+  return GetClassNameW(window, name, ARRAYSIZE(name)) && !_wcsicmp(name, L"ControlCenterWindow");
+}
+inline void RetrySoundTap() {
+  auto tap = std::move(*soundTap);
+  CancelSoundTap();
+  auto foreground = GetForegroundWindow();
+  if (stopping || !SettingsSnapshot().quickSoundAccess || !tap.icon.IsLoaded() ||
+      MonitorFromWindow(tap.taskbar, MONITOR_DEFAULTTONULL) != tap.monitor ||
+      SoundPageShown(tap.monitor) ||
+      (foreground != tap.foreground && foreground != tap.taskbar &&
+       !IsControlCenterWindow(foreground)))
+    return;
+  tap.args.Handled(tap.handled);
+  // The projected icon keeps the native object alive until the replay. The
+  // original callee releases the reference in this ABI argument slot.
+  auto slot = winrt::detach_abi(tap.args);
+  Wh_Log(L"No Sound page confirmed on the target monitor; replaying the tray tap");
+  originalTapped(tap.self, tap.sender, &slot);
+}
 inline void WINAPI Tapped(void *self, IInspectable const &sender, void *argsSlot) {
   auto &args = *static_cast<X::Input::TappedRoutedEventArgs *>(argsSlot);
-  if (!stopping)
+  CancelSoundTap();
+  auto settings = SettingsSnapshot();
+  if (!stopping && (settings.quickSoundAccess || settings.trayMiddleClickMute))
     try {
       // Intercept the shell's own handler, before it activates Quick Settings.
       // A later UIElement.Tapped subscription cannot cancel an action already
@@ -7660,25 +9372,39 @@ inline void WINAPI Tapped(void *self, IInspectable const &sender, void *argsSlot
         (*address)->QueryInterface(winrt::guid_of<X::FrameworkElement>(), winrt::put_abi(icon));
         if (icon && InControlCenter(icon) &&
             Find(icon, [](auto const &child) { return VolumeLeaf(child); })) {
-          args.Handled(true);
-          Wh_Log(L"Sound panel: native volume click intercepted");
-          OpenNativeSound();
-          try {
-            for (auto taskbar : Taskbars())
-              if (GetWindowThreadProcessId(taskbar, nullptr) == GetCurrentThreadId()) {
-                Observe(icon, taskbar);
-                break;
-              }
-          } catch (...) {
-            Wh_Log(L"Lazy volume icon styling failed; click was still handled");
+          bool mouse =
+              args.PointerDeviceType() == winrt::Windows::Devices::Input::PointerDeviceType::Mouse;
+          // Tapped is independent of the handled flag on the pointer events.
+          if (settings.trayMiddleClickMute && mouse && ConsumeMiddleTap(icon)) {
+            args.Handled(true);
+            Wh_Log(L"Tray middle click: suppressed the panel tap");
+            args = nullptr; // the callee's share of the by-value argument
+            return;
           }
-          args = nullptr; // the callee's share of the by-value argument
-          return;
+          if (settings.quickSoundAccess)
+            if (auto taskbar = SoundTaskbar(icon, mouse)) {
+              auto monitor = MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL);
+              auto token = SoundRequestToken(GetTickCount64(), ++nextSoundTap);
+              if (monitor && (SoundPageShown(monitor) ||
+                              AwaitSoundPage({taskbar, monitor, token, self, icon, sender,
+                                              args, args.Handled(), GetForegroundWindow()})) &&
+                  OpenNativeSound()) {
+                args.Handled(true);
+                args = nullptr; // the callee's share of the by-value argument
+                try {
+                  Observe(icon, taskbar);
+                } catch (...) {
+                  Wh_Log(L"Lazy volume icon styling failed; click was still handled");
+                }
+                return;
+              }
+            }
         }
       }
     } catch (winrt::hresult_error const &error) {
       Wh_Log(L"Native volume handler: 0x%08X", error.code().value);
     }
+  CancelSoundTap();
   originalTapped(self, sender, argsSlot);
 }
 inline bool HookTray(HMODULE module) {
@@ -7749,12 +9475,18 @@ inline bool Initialize(HINSTANCE instance) {
   return result;
 }
 inline void AttachExisting() {
+  bool menuHooked = false;
   for (auto taskbar : Taskbars())
-    Dispatch(taskbar, [taskbar] {
+    Dispatch(taskbar, [taskbar, &menuHooked] {
       EnsurePulse(taskbar);
       auto root = Root(taskbar);
-      if (root)
+      if (root) {
         Walk(root.Content(), taskbar);
+        if (!menuHooked) {
+          HookTrayMenus();
+          menuHooked = true;
+        }
+      }
     });
   size_t attached = 0;
   {
@@ -7768,13 +9500,37 @@ inline void AttachExisting() {
 // All XAML cleanup and the final Record destruction stay on the owner thread.
 // Leave a record in the no_destroy vector if cleanup fails partway through.
 inline void CleanupThreadRecords() {
+  CancelSoundTap();
   std::vector<std::shared_ptr<Record>> local;
+  std::vector<MenuEntry> menus;
   {
     std::lock_guard lock(recordsMutex);
     for (auto const &record : records)
       if (record->thread == GetCurrentThreadId())
         local.push_back(record);
+    std::erase_if(menuEntries, [&](auto &entry) {
+      if (entry.thread != GetCurrentThreadId())
+        return false;
+      menus.push_back(std::move(entry));
+      return true;
+    });
   }
+  for (auto const &entry : menus)
+    try {
+      auto item = entry.item.get();
+      if (item)
+        item.Click(entry.click);
+      if (auto menu = entry.menu.get()) {
+        uint32_t index;
+        auto items = menu.Items();
+        if (item && items.IndexOf(item, index))
+          items.RemoveAt(index);
+        if (auto separator = entry.separator.get(); separator && items.IndexOf(separator, index))
+          items.RemoveAt(index);
+      }
+    } catch (...) {
+      Wh_Log(L"Tray menu cleanup on UI thread %u: %08X", entry.thread, winrt::to_hresult());
+    }
   for (auto const &record : local)
     try {
       if (record->timer) {
@@ -7782,10 +9538,17 @@ inline void CleanupThreadRecords() {
         record->timer.Tick(record->tick);
         record->timer = nullptr;
       }
-      if (auto icon = record->icon.get(); icon && record->loaded.value) {
-        icon.Loaded(record->loaded);
-        record->loaded = {};
+      if (auto icon = record->icon.get()) {
+        if (record->loaded.value) {
+          icon.Loaded(record->loaded);
+          record->loaded = {};
+        }
+        if (record->middleGesture) {
+          icon.RemoveHandler(X::UIElement::PointerPressedEvent(), record->middleGesture);
+          icon.RemoveHandler(X::UIElement::PointerReleasedEvent(), record->middleGesture);
+        }
       }
+      record->middleGesture = nullptr;
       RestoreGlyphs(record);
       RemoveVisual(record);
       record->animated.reset();
@@ -7839,6 +9602,8 @@ inline void Shutdown() {
     std::lock_guard lock(recordsMutex);
     for (auto const &record : records)
       remaining.try_emplace(record->thread, record->dispatcher);
+    for (auto const &entry : menuEntries)
+      remaining.try_emplace(entry.thread, entry.dispatcher);
   }
   for (auto const &[thread, dispatcher] : remaining) {
     auto threadHandle = OpenThread(SYNCHRONIZE, FALSE, thread);
@@ -7864,6 +9629,8 @@ inline void Shutdown() {
       records.shrink_to_fit();
     else
       Wh_Log(L"Retaining %zu tray records on unreachable UI threads", records.size());
+    if (!menuEntries.empty())
+      Wh_Log(L"Retaining %zu tray menu entries on unreachable UI threads", menuEntries.size());
   }
   audio.reset();
 }
@@ -7871,9 +9638,74 @@ inline void Shutdown() {
 
 namespace native {
 inline bool explorer = false;
-inline void Settings() {
-  auto setting = WindhawkUtils::StringSetting::make(L"hiddenApps");
-  hidden = sound::ParseHidden(setting.get());
+inline void ReadHiddenApps(std::vector<std::wstring> &hidden) {
+  hidden.clear();
+  // Windhawk exposes indexed values but no array length. Allow empty rows
+  // between names, including rows left blank in the settings editor.
+  for (int i = 0, blanks = 0; blanks < 32; ++i) {
+    auto name = WindhawkUtils::StringSetting::make(L"hiddenApplications[%d]", i);
+    if (!*name.get()) {
+      ++blanks;
+      continue;
+    }
+    blanks = 0;
+    sound::AddHiddenApp(hidden, name.get());
+  }
+  if (!hidden.empty()) {
+    if (!Wh_GetIntValue(L"usesHiddenAppRows", 0))
+      Wh_SetIntValue(L"usesHiddenAppRows", 1);
+  } else if (!Wh_GetIntValue(L"usesHiddenAppRows", 0)) {
+    auto legacy = WindhawkUtils::StringSetting::make(L"hiddenApps");
+    hidden = sound::ParseHidden(legacy.get());
+  }
+}
+inline ModSettings ReadSettings() {
+  ModSettings settings;
+  ReadHiddenApps(settings.hidden);
+  settings.volumeWheelStep = sound::VolumeWheelStep(Wh_GetIntSetting(L"volumeWheelStep"));
+  settings.trayMiddleClickMute = Wh_GetIntSetting(L"trayMiddleClickMute") != 0;
+  auto brightness = WindhawkUtils::StringSetting::make(L"brightnessMode");
+  settings.brightnessEnabled = std::wstring_view(brightness.get()) != L"disabled";
+  auto rows = WindhawkUtils::StringSetting::make(L"quickActionRows");
+  std::wstring_view rowCount(rows.get());
+  if (rowCount.size() == 1 && rowCount.front() >= L'1' && rowCount.front() <= L'4')
+    settings.quickActionRows = rowCount.front() - L'0';
+  using S = sound::QuickShortcut;
+  auto first = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut1");
+  const auto oldIcon = [&](PCWSTR key) { return !*first.get() || Wh_GetIntSetting(key) != 0; };
+  const auto icon = [](PCWSTR key, bool fallback) {
+    auto value = WindhawkUtils::StringSetting::make(key);
+    return *value.get() ? std::wstring_view(value.get()) == L"1" : fallback;
+  };
+  auto mixer = WindhawkUtils::StringSetting::make(L"alternativeIcons.mixerPlaces");
+  auto volume = WindhawkUtils::StringSetting::make(L"alternativeIcons.volumePlaces");
+  auto ethernet = WindhawkUtils::StringSetting::make(L"alternativeIcons.ethernetPlaces");
+  auto gear = WindhawkUtils::StringSetting::make(L"alternativeIcons.gearPlaces");
+  unsigned mixerPlaces = sound::IconPlaces(mixer.get(), 3,
+      oldIcon(L"alternativeIcons.quickMixer") | (oldIcon(L"alternativeIcons.soundMixer") << 1));
+  unsigned volumePlaces = sound::IconPlaces(volume.get(), 15,
+      oldIcon(L"alternativeIcons.trayVolume") | (oldIcon(L"alternativeIcons.quickVolume") << 1) |
+      (oldIcon(L"alternativeIcons.soundVolume") << 2) | (oldIcon(L"alternativeIcons.appUnmute") << 3));
+  settings.altQuickMixer = icon(L"alternativeIcons.mixer.quick", mixerPlaces & 1);
+  settings.altSoundMixer = icon(L"alternativeIcons.mixer.sound", mixerPlaces & 2);
+  settings.altTrayVolume = icon(L"alternativeIcons.volume.taskbar", volumePlaces & 1);
+  settings.altQuickVolume = icon(L"alternativeIcons.volume.quick", volumePlaces & 2);
+  settings.altSoundVolume = icon(L"alternativeIcons.volume.sound", volumePlaces & 4);
+  settings.altAppUnmute = icon(L"alternativeIcons.volume.apps", volumePlaces & 8);
+  settings.altTrayEthernet = icon(
+      L"alternativeIcons.ethernet.taskbar",
+      sound::IconPlaces(ethernet.get(), 1, oldIcon(L"alternativeIcons.trayEthernet")));
+  settings.altSoundGear = icon(L"alternativeIcons.gear.sound", sound::IconPlaces(gear.get(), 1, 1));
+  if (*first.get()) {
+    for (int i = 0; i < int(settings.quickShortcuts.size()); ++i) {
+      auto slot = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut%d", i + 1);
+      settings.quickShortcuts[i] = sound::ParseQuickShortcut(slot.get());
+    }
+    settings.quickSoundAccess = Wh_GetIntSetting(L"quickSoundAccess") != 0;
+  } else {
+    settings.quickShortcuts = {Wh_GetIntSetting(L"showDisplaySettings") ? S::Display : S::None};
+  }
+  return settings;
 }
 } // namespace native
 BOOL Wh_ModInit() {
@@ -7885,7 +9717,7 @@ BOOL Wh_ModInit() {
   GetModuleFileNameW(nullptr, path, 32768);
   explorer = !_wcsicmp(PathFindFileNameW(path), L"explorer.exe");
   stopping = false;
-  Settings();
+  modSettings = ReadSettings();
   if (explorer) {
     if (!tray::Initialize(module)) {
       tray::Shutdown();
@@ -7909,7 +9741,19 @@ void Wh_ModUninit() {
     native::StopHost();
 }
 BOOL Wh_ModSettingsChanged(BOOL *reload) {
-  *reload = TRUE;
+  using namespace native;
+  *reload = FALSE;
+  auto next = ReadSettings();
+  {
+    std::lock_guard lock(settingsMutex);
+    if (next == modSettings)
+      return TRUE;
+    modSettings = std::move(next);
+  }
+  if (explorer)
+    tray::RefreshSettings();
+  else
+    RefreshHostSettings();
   return TRUE;
 }
 

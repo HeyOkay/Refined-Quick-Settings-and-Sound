@@ -40,8 +40,35 @@ namespace D = X::Data;
 using winrt::Windows::Foundation::IInspectable;
 inline std::atomic<bool> stopping = false;
 inline HMODULE module = nullptr;
-inline std::vector<std::wstring> hidden;
+struct ModSettings {
+  std::vector<std::wstring> hidden;
+  bool brightnessEnabled = true;
+  int quickActionRows = 2;
+  sound::QuickShortcutSlots quickShortcuts{};
+  bool quickSoundAccess = true, trayMiddleClickMute = false;
+  int volumeWheelStep = 2;
+  bool altQuickMixer = true, altSoundMixer = true, altTrayVolume = true,
+       altTrayEthernet = true, altQuickVolume = true, altSoundVolume = true,
+       altAppUnmute = true, altSoundGear = true;
+  bool operator==(ModSettings const &) const = default;
+};
+inline std::mutex settingsMutex;
+inline ModSettings modSettings;
+inline ModSettings SettingsSnapshot() {
+  std::lock_guard lock(settingsMutex);
+  return modSettings;
+}
 inline UINT volumePulseMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.VolumePulse.1");
+inline UINT soundShownMessage = RegisterWindowMessageW(L"Windhawk.NativeSound.SoundShown.1");
+inline constexpr WCHAR soundRequestProperty[] = L"Windhawk.NativeSound.SoundRequest.1";
+inline constexpr WCHAR soundPageProperty[] = L"Windhawk.NativeSound.SoundPage.1";
+inline constexpr UINT_PTR SoundRequestToken(ULONGLONG now, UINT_PTR sequence) {
+  return static_cast<UINT_PTR>(now << 16) | (sequence & 0xffff);
+}
+inline constexpr bool SoundEventMatchesRequest(UINT_PTR token, DWORD shownAt) {
+  // WinEvent timestamps wrap at 32 bits. A request only lives for 1.2 seconds.
+  return static_cast<LONG>(shownAt - static_cast<DWORD>(token >> 16)) >= 0;
+}
 // Used only while unloading. Wait for the asynchronous operation itself,
 // not an event set inside its delegate: the DLL must outlive the delegate's return.
 inline bool DispatchCleanup(winrt::Windows::UI::Core::CoreDispatcher const &dispatcher,
@@ -155,13 +182,18 @@ inline C::FontIcon SymbolGlyph(X::FrameworkElement const &owner, wchar_t code, d
   icon.IsHitTestVisible(false);
   return icon;
 }
-inline C::FontIcon VolumeGlyph(X::FrameworkElement const &owner, int level, double size = 16) {
-  return SymbolGlyph(owner,
-                     level == 0   ? 0xe74f
-                     : level == 1 ? 0xe993
-                     : level == 2 ? 0xe994
-                                  : 0xe995,
-                     size);
+inline X::UIElement VolumeGlyph(X::FrameworkElement const &owner, int level, double size = 16) {
+  auto active = SymbolGlyph(owner, level < 0 ? 0xe74f : 0xe992 + level, size);
+  if (level < 0 || level == 3)
+    return active;
+  // The Windows symbol font provides the waves separately as VolumeBars.
+  auto waves = SymbolGlyph(owner, 0xebc5, size);
+  waves.Opacity(.35);
+  C::Grid icon;
+  icon.IsHitTestVisible(false);
+  icon.Children().Append(waves);
+  icon.Children().Append(active);
+  return icon;
 }
 // Built in code: XamlReader::Load ran several times per Sound opening (pickers,
 // input rows, master row), and parsed XAML stays registered with XAML Diagnostics.
