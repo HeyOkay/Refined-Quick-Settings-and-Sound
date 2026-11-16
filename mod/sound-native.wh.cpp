@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.6.5
+// @version 0.6.6
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound

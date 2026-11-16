@@ -510,6 +510,7 @@ using ShowFlyout = HRESULT(WINAPI *)(void *, void *);
 using ShowFlyoutWithOptions = HRESULT(WINAPI *)(void *, void *, void *);
 inline ShowFlyout originalShowFlyout = nullptr;
 inline ShowFlyoutWithOptions originalShowFlyoutWithOptions = nullptr;
+inline std::atomic<bool> trayMenuHookStarted{false};
 inline HRESULT WINAPI ShowTrayFlyout(void *self, void *target) {
   ExtendTrayMenu(self);
   return originalShowFlyout(self, target);
@@ -519,6 +520,8 @@ inline HRESULT WINAPI ShowTrayFlyoutWithOptions(void *self, void *target, void *
   return originalShowFlyoutWithOptions(self, target, options);
 }
 inline void HookTrayMenus() {
+  if (stopping || trayMenuHookStarted.exchange(true))
+    return;
   try {
     C::MenuFlyout flyout;
     auto base = flyout.as<P::IFlyoutBase>();
@@ -534,6 +537,9 @@ inline void HookTrayMenus() {
     if (!(basic || options) || !Wh_ApplyHookOperations())
       Wh_Log(L"Tray menu hook unavailable");
   } catch (...) {
+    // The taskbar window can exist before its thread is ready to create XAML.
+    // Allow the next icon constructor to retry.
+    trayMenuHookStarted = false;
     Wh_Log(L"TrayMenuHookError %08X", winrt::to_hresult());
   }
 }
@@ -1013,6 +1019,8 @@ inline void *WINAPI Constructed(void *self) {
   auto result = originalConstructor(self);
   if (stopping)
     return result;
+  // Explorer can create the tray after Wh_ModAfterInit has already run.
+  HookTrayMenus();
   // C++/WinRT implementation's projected interface occupies the second slot.
   try {
     auto address = reinterpret_cast<IUnknown **>(self) + 1;
@@ -1246,18 +1254,12 @@ inline bool Initialize(HINSTANCE instance) {
   return result;
 }
 inline void AttachExisting() {
-  bool menuHooked = false;
   for (auto taskbar : Taskbars())
-    Dispatch(taskbar, [taskbar, &menuHooked] {
+    Dispatch(taskbar, [taskbar] {
+      HookTrayMenus();
       EnsurePulse(taskbar);
-      auto root = Root(taskbar);
-      if (root) {
+      if (auto root = Root(taskbar))
         Walk(root.Content(), taskbar);
-        if (!menuHooked) {
-          HookTrayMenus();
-          menuHooked = true;
-        }
-      }
     });
   size_t attached = 0;
   {
