@@ -40,8 +40,9 @@ is restored when the mod is unloaded.
 **Quick Settings**
 
 - **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
-- The DDC/CI brightness row has a shortcut to Display settings and a Night light button. The latter uses the native quick action when available and opens Night light settings otherwise.
+- The brightness row places the native Windows slider, or the DDC/CI slider, between Night light and Display settings. Night light uses the native quick action when available and opens its settings otherwise.
 - Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
+- Choose the default or pill shape independently for Quick Settings tiles and closed Sound selection fields under **Appearance**.
 - Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
 
 **Sound**
@@ -192,6 +193,69 @@ in this source file.
   $options:zh-CN:
   - auto: 自动
   - disabled: 禁用
+- appearance:
+  - quickTiles: default
+    $name: Quick Settings tile shape
+    $name:ru-RU: Форма плиток быстрых настроек
+    $name:es-ES: Forma de los mosaicos rápidos
+    $name:de-DE: Form der Schnelleinstellungskacheln
+    $name:pt-BR: Formato dos blocos rápidos
+    $name:zh-CN: 快速设置磁贴形状
+    $options:
+    - default: Default
+    - pills: Pills
+    $options:ru-RU:
+    - default: По умолчанию
+    - pills: Капсулы (pills)
+    $options:es-ES:
+    - default: Predeterminada
+    - pills: Cápsulas
+    $options:de-DE:
+    - default: Standard
+    - pills: Kapselform
+    $options:pt-BR:
+    - default: Padrão
+    - pills: Cápsulas
+    $options:zh-CN:
+    - default: 默认
+    - pills: 胶囊形
+  - soundPickers: default
+    $name: Sound selection field shape
+    $name:ru-RU: Форма полей выбора в Sound
+    $name:es-ES: Forma de los campos de sonido
+    $name:de-DE: Form der Sound-Auswahlfelder
+    $name:pt-BR: Formato dos campos de som
+    $name:zh-CN: 声音选择框形状
+    $description: Applies only to the closed output, input and spatial sound fields
+    $description:ru-RU: Только закрытые поля устройства вывода, ввода и пространственного звука
+    $description:es-ES: Solo los campos cerrados de salida, entrada y sonido espacial
+    $description:de-DE: Nur die geschlossenen Auswahlfelder für Ausgabe, Eingabe und Raumklang
+    $description:pt-BR: Somente os campos fechados de saída, entrada e som espacial
+    $description:zh-CN: 仅用于关闭状态下的输出、输入和空间音效选择框
+    $options:
+    - default: Default
+    - pills: Pills
+    $options:ru-RU:
+    - default: По умолчанию
+    - pills: Капсулы (pills)
+    $options:es-ES:
+    - default: Predeterminada
+    - pills: Cápsulas
+    $options:de-DE:
+    - default: Standard
+    - pills: Kapselform
+    $options:pt-BR:
+    - default: Padrão
+    - pills: Cápsulas
+    $options:zh-CN:
+    - default: 默认
+    - pills: 胶囊形
+  $name: Appearance
+  $name:ru-RU: Внешний вид
+  $name:es-ES: Apariencia
+  $name:de-DE: Darstellung
+  $name:pt-BR: Aparência
+  $name:zh-CN: 外观
 - quickSettings:
   - shortcut1: display
     $name: "Shortcut 1"
@@ -709,6 +773,10 @@ inline void ReadHiddenApps(std::vector<std::wstring> &hidden) {
 }
 inline ModSettings ReadSettings() {
   ModSettings settings;
+  auto quickShape = WindhawkUtils::StringSetting::make(L"appearance.quickTiles");
+  auto pickerShape = WindhawkUtils::StringSetting::make(L"appearance.soundPickers");
+  settings.pillQuickTiles = std::wstring_view(quickShape.get()) == L"pills";
+  settings.pillSoundPickers = std::wstring_view(pickerShape.get()) == L"pills";
   ReadHiddenApps(settings.hidden);
   settings.volumeWheelStep = sound::VolumeWheelStep(Wh_GetIntSetting(L"volumeWheelStep"));
   settings.trayMiddleClickMute = Wh_GetIntSetting(L"trayMiddleClickMute") != 0;

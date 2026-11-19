@@ -61,6 +61,7 @@ class SoundPage {
   C::StackPanel inputBlock_{nullptr};
   C::Button mixerSettings_{nullptr}, soundSettings_{nullptr};
   Journal gearJournal_;
+  Journal pickerShapeJournal_;
   ModSettings settings_;
   std::shared_ptr<Menu> input_;
   C::Slider master_{nullptr};
@@ -538,6 +539,46 @@ class SoundPage {
     m->label.Text(text.empty() ? L"—" : text);
     m->button.IsEnabled(m->list.IsEnabled() && m->list.Items().Size() > 0);
   }
+  void ApplyPickerShapes() {
+    if (!settings_.pillSoundPickers) {
+      pickerShapeJournal_.Restore();
+      return;
+    }
+    for (auto const &menu : menus_) {
+      auto button = menu->button;
+      auto content = button.Content().try_as<C::Grid>();
+      if (!content || content.ColumnDefinitions().Size() != 3)
+        continue;
+      double height = button.Height();
+      if (!std::isfinite(height) || height <= 0)
+        continue;
+      double half = height / 2.;
+      X::CornerRadius radius{half, half, half, half};
+      if (button.CornerRadius() != radius) {
+        pickerShapeJournal_.Save(button, C::Control::CornerRadiusProperty());
+        button.CornerRadius(radius);
+      }
+      if (button.Padding() != X::Thickness{}) {
+        pickerShapeJournal_.Save(button, C::Control::PaddingProperty());
+        button.Padding({0, 0, 0, 0});
+      }
+      // Centre each end glyph on the outer cap's axis. The Button template
+      // puts its border before Content, so account for that inset explicitly:
+      // border.Left + leftColumn / 2 == height / 2 (and likewise on the right).
+      auto border = button.BorderThickness();
+      auto columns = content.ColumnDefinitions();
+      for (auto index : {0u, 2u}) {
+        double inset = index == 0 ? border.Left : border.Right;
+        auto width = X::GridLengthHelper::FromValueAndType(
+            std::max(0., height - 2 * inset), X::GridUnitType::Pixel);
+        auto column = columns.GetAt(index);
+        if (column.Width() != width) {
+          pickerShapeJournal_.Save(column, C::ColumnDefinition::WidthProperty());
+          column.Width(width);
+        }
+      }
+    }
+  }
   std::shared_ptr<Menu> Picker(X::FrameworkElement const &owner, MenuKind kind,
                                winrt::hstring const &nativeName = {}) {
     auto m = std::make_shared<Menu>();
@@ -611,6 +652,7 @@ class SoundPage {
       Rotate(m->arrow, m->arrowStory, 0, 220);
     }));
     menus_.push_back(m);
+    ApplyPickerShapes();
     return m;
   }
   void Compact(C::ListView const &list) {
@@ -1292,6 +1334,8 @@ public:
   }
   void ApplySettings(ModSettings const &next) {
     auto previous = std::exchange(settings_, next);
+    if (previous.pillSoundPickers != next.pillSoundPickers)
+      ApplyPickerShapes();
     if (previous.altSoundMixer != next.altSoundMixer)
       MixerSettingsIcon();
     if (soundSettings_ && previous.altSoundGear != next.altSoundGear)
@@ -1985,6 +2029,10 @@ public:
         return;
       }
     }
+    // Reconcile after the theme template resolves its border thickness.
+    // Equal-value guards keep this from contributing another layout pass.
+    if (settings_.pillSoundPickers)
+      ApplyPickerShapes();
     if ((!holding_ || openHold_) && expanded_ &&
         mixerList_.Visibility() == X::Visibility::Visible &&
         (!(animation_ && animation_.IsEnabled()) || holdAnimation_)) {
@@ -2365,6 +2413,7 @@ public:
     }
     if (gearStory_)
       gearStory_.Stop();
+    pickerShapeJournal_.Restore();
     gearJournal_.Restore();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();
@@ -2422,6 +2471,7 @@ public:
     }
     if (gearStory_)
       gearStory_.Stop();
+    pickerShapeJournal_.Restore();
     gearJournal_.Restore();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();

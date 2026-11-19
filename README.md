@@ -15,8 +15,9 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 **Quick Settings**
 
 - Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
-- The DDC/CI brightness row has a shortcut to Display settings and a Night light button. The latter uses the native quick action when available and opens Night light settings otherwise.
+- The brightness row places the native Windows slider, or the DDC/CI slider, between Night light and Display settings. Night light uses the native quick action when available and opens its settings otherwise.
 - **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
+- Choose the default or pill shape independently for Quick Settings tiles and closed Sound selection fields under **Appearance**.
 - Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
 
 **Sound**

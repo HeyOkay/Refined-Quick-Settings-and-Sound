@@ -43,6 +43,7 @@ inline HMODULE module = nullptr;
 struct ModSettings {
   std::vector<std::wstring> hidden;
   bool brightnessEnabled = true;
+  bool pillQuickTiles = false, pillSoundPickers = false;
   int quickActionRows = 2;
   sound::QuickShortcutSlots quickShortcuts{};
   bool quickSoundAccess = true, trayMiddleClickMute = false;
