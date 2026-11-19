@@ -15,10 +15,15 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 **Quick Settings**
 
 - Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
-- The brightness row places the native Windows slider, or the DDC/CI slider, between Night light and Display settings. Night light uses the native quick action when available and opens its settings otherwise.
-- **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
-- Choose the default or pill shape independently for Quick Settings tiles and closed Sound selection fields under **Appearance**.
-- Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
+- **Display brightness** uses the Windows slider in the default **Auto** mode and falls back to DDC/CI on compatible monitors with DDC/CI enabled. **Disable** hides the brightness row.
+- The mod places Night light and Display settings beside the brightness slider. If the native slider cannot be moved, Windows keeps its original row. Night light uses the native quick action when available and opens Night light settings otherwise.
+- On devices with a battery, the battery button moves into the **Settings** row.
+
+**Appearance**
+
+- **Rows of tiles** sets 1–4 rows per page with Windows pagination. If the mod cannot recognize the tile grid layout, Windows uses its default row count.
+- **Tile shape** rounds the outer edges of Quick Settings tiles in **Pills** mode.
+- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 
 **Sound**
 
@@ -37,9 +42,11 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 - **Device Manager** is available in the network and battery icon menus.
 - **Alternative icons** includes the animated volume and wired network icons from the original mod. Each location has its own switch. Switching one off uses the Windows icon there.
 
+The interface is available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese.
+
 ## Compatibility
 
-Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64 (ARM64 is untested). Development testing was performed on build **26300**, primarily at **125%** display scale. Other builds and scales need validation; this mod depends on internal shell XAML elements and symbols that Windows updates can change. Added labels are available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese. DDC/CI brightness requires a compatible monitor with DDC/CI enabled in its settings.
+Requires Windows 11 24H2 or later (x64).
 
 Disable other mods or styling rules that modify the same Quick Settings, Sound or taskbar volume elements.
 
@@ -53,6 +60,8 @@ Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll an
 4. If the panels do not update, restart ShellHost. Windhawk logs contain diagnostic errors.
 
 No prebuilt DLL is required. Open Quick Settings with Win+A and Sound with Win+Ctrl+V. The taskbar volume icon also opens Sound when **Quick access to Sound** is enabled.
+
+After updating, check **Rows of tiles** under **Appearance** if you previously changed the row count.
 
 The repeatable mouse demo recorder is documented in [docs/PREVIEW.ru.md](docs/PREVIEW.ru.md).
 

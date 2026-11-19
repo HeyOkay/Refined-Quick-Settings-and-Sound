@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.6.6
+// @version 0.7.3
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -17,6 +17,7 @@
 // @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lpowrprof -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
+// Build: 175
 // Modified by Constantine Travkin on 2026-11-14.
 // Based on HeyOkay's v0.1.154 (source blob 7229ac098ad0e8732905b831259d2aa99984bb31).
 // Upstream: https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -39,11 +40,16 @@ is restored when the mod is unloaded.
 
 **Quick Settings**
 
-- **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
-- The brightness row places the native Windows slider, or the DDC/CI slider, between Night light and Display settings. Night light uses the native quick action when available and opens its settings otherwise.
 - Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
-- Choose the default or pill shape independently for Quick Settings tiles and closed Sound selection fields under **Appearance**.
-- Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
+- **Display brightness** uses the Windows slider in the default **Auto** mode and falls back to DDC/CI on compatible monitors with DDC/CI enabled. **Disable** hides the brightness row.
+- The mod places Night light and Display settings beside the brightness slider. If the native slider cannot be moved, Windows keeps its original row. Night light uses the native quick action when available and opens Night light settings otherwise.
+- On devices with a battery, the battery button moves into the **Settings** row.
+
+**Appearance**
+
+- **Rows of tiles** sets 1–4 rows per page with Windows pagination. If the mod cannot recognize the tile grid layout, Windows uses its default row count.
+- **Tile shape** rounds the outer edges of Quick Settings tiles in **Pills** mode.
+- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 
 **Sound**
 
@@ -63,18 +69,17 @@ is restored when the mod is unloaded.
 - Device Manager is available in the network and battery icon menus.
 - **Alternative icons** includes the animated volume and wired network icons from the original mod. Each location has its own switch. Switching one off uses the Windows icon there.
 
+The interface is available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese.
+
 ## Platforms
 
-- Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64.
-  The original mod was developed on build 26300, primarily at 125% scale.
-- Other Windows builds and display scales need validation. The mod depends on
-  internal shell XAML elements and symbols which can change with Windows updates.
-- DDC/CI brightness requires a compatible monitor with DDC/CI enabled.
-- Added labels are available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese.
+Requires Windows 11 24H2 or later (x64).
 
 ## Usage
 
 Open Quick Settings with Win+A and Sound with Win+Ctrl+V. When **Quick access to Sound** is enabled, the taskbar volume icon opens Sound as well. Adjust the mod's options on its **Settings** tab in Windhawk.
+
+After updating, check **Rows of tiles** under **Appearance**.
 
 Disable other mods or styles that change the same controls. If the panels do not update after enabling the mod, close and reopen them. If needed, restart ShellHost and check the Windhawk log.
 
@@ -144,24 +149,6 @@ in this source file.
   $description:de-DE: Prozentpunkte pro Mausradschritt über einem Lautstärkeregler, von 1 bis 100
   $description:pt-BR: Pontos percentuais por passo da roda sobre um controle de volume, de 1 a 100
   $description:zh-CN: 在音量滑块上滚动一格改变的百分点，范围为 1 到 100
-- quickActionRows: "2"
-  $name: Rows of tiles
-  $name:ru-RU: Строки плиток
-  $name:es-ES: Filas de mosaicos
-  $name:de-DE: Kachelzeilen in den Schnelleinstellungen
-  $name:pt-BR: Linhas de blocos nas configurações rápidas
-  $name:zh-CN: 快速设置磁贴行数
-  $description: How many rows fit on each Quick Settings page
-  $description:ru-RU: Сколько строк помещается на одной странице быстрых настроек
-  $description:es-ES: Número de filas de mosaicos por página de Configuración rápida
-  $description:de-DE: Anzahl der Kachelzeilen pro Seite der Schnelleinstellungen
-  $description:pt-BR: Número de linhas por página das Configurações rápidas
-  $description:zh-CN: 每页快速设置显示的磁贴行数
-  $options:
-  - "1": "1"
-  - "2": "2"
-  - "3": "3"
-  - "4": "4"
 - brightnessMode: auto
   $name: Display brightness
   $name:ru-RU: Яркость дисплея
@@ -194,19 +181,43 @@ in this source file.
   - auto: 自动
   - disabled: 禁用
 - appearance:
+  - quickActionRows: "2"
+    $name: Rows of tiles
+    $name:ru-RU: Строки плиток
+    $name:es-ES: Filas de mosaicos
+    $name:de-DE: Kachelzeilen in den Schnelleinstellungen
+    $name:pt-BR: Linhas de blocos nas configurações rápidas
+    $name:zh-CN: 快速设置磁贴行数
+    $description: How many rows fit on each Quick Settings page
+    $description:ru-RU: Сколько строк помещается на одной странице быстрых настроек
+    $description:es-ES: Número de filas de mosaicos por página de Configuración rápida
+    $description:de-DE: Anzahl der Kachelzeilen pro Seite der Schnelleinstellungen
+    $description:pt-BR: Número de linhas por página das Configurações rápidas
+    $description:zh-CN: 每页快速设置显示的磁贴行数
+    $options:
+    - "1": "1"
+    - "2": "2"
+    - "3": "3"
+    - "4": "4"
   - quickTiles: default
-    $name: Quick Settings tile shape
-    $name:ru-RU: Форма плиток быстрых настроек
-    $name:es-ES: Forma de los mosaicos rápidos
-    $name:de-DE: Form der Schnelleinstellungskacheln
-    $name:pt-BR: Formato dos blocos rápidos
-    $name:zh-CN: 快速设置磁贴形状
+    $name: Tile shape
+    $name:ru-RU: Форма плиток
+    $name:es-ES: Forma de los mosaicos
+    $name:de-DE: Kachelform
+    $name:pt-BR: Forma dos blocos
+    $name:zh-CN: 磁贴形状
+    $description: In Pills mode, Quick Settings tiles have rounded outer edges
+    $description:ru-RU: В режиме «Капсулы» скругляются внешние края плиток быстрых настроек
+    $description:es-ES: En el modo Cápsulas se redondean los bordes exteriores de los mosaicos de Configuración rápida
+    $description:de-DE: Die Kapselform rundet die Außenkanten der Schnelleinstellungskacheln ab
+    $description:pt-BR: No modo Cápsulas, as bordas externas dos blocos das Configurações rápidas ficam arredondadas
+    $description:zh-CN: 选择胶囊形后，快速设置磁贴的外侧边缘会变圆
     $options:
     - default: Default
     - pills: Pills
     $options:ru-RU:
     - default: По умолчанию
-    - pills: Капсулы (pills)
+    - pills: Капсулы
     $options:es-ES:
     - default: Predeterminada
     - pills: Cápsulas
@@ -220,24 +231,24 @@ in this source file.
     - default: 默认
     - pills: 胶囊形
   - soundPickers: default
-    $name: Sound selection field shape
-    $name:ru-RU: Форма полей выбора в Sound
-    $name:es-ES: Forma de los campos de sonido
-    $name:de-DE: Form der Sound-Auswahlfelder
-    $name:pt-BR: Formato dos campos de som
-    $name:zh-CN: 声音选择框形状
-    $description: Applies only to the closed output, input and spatial sound fields
-    $description:ru-RU: Только закрытые поля устройства вывода, ввода и пространственного звука
-    $description:es-ES: Solo los campos cerrados de salida, entrada y sonido espacial
-    $description:de-DE: Nur die geschlossenen Auswahlfelder für Ausgabe, Eingabe und Raumklang
-    $description:pt-BR: Somente os campos fechados de saída, entrada e som espacial
-    $description:zh-CN: 仅用于关闭状态下的输出、输入和空间音效选择框
+    $name: Sound field shape
+    $name:ru-RU: Форма полей устройств
+    $name:es-ES: Forma de los selectores
+    $name:de-DE: Form der Soundfelder
+    $name:pt-BR: Forma dos seletores
+    $name:zh-CN: 声音选框形状
+    $description: Pills mode rounds the closed selectors for output, input and spatial sound on the Sound page
+    $description:ru-RU: В режиме «Капсулы» скругляются закрытые поля выбора вывода, ввода и пространственного звука
+    $description:es-ES: En el modo Cápsulas se redondean los selectores cerrados de salida, entrada y sonido espacial en el panel Sonido
+    $description:de-DE: Die Kapselform rundet die geschlossenen Auswahlfelder für Ausgabe, Eingabe und Raumklang auf der Soundseite ab
+    $description:pt-BR: No modo Cápsulas, os seletores fechados de saída, entrada e som espacial ficam arredondados no painel Som
+    $description:zh-CN: 选择胶囊形后，声音面板中的输出、输入和空间音效选择框在关闭时呈胶囊形
     $options:
     - default: Default
     - pills: Pills
     $options:ru-RU:
     - default: По умолчанию
-    - pills: Капсулы (pills)
+    - pills: Капсулы
     $options:es-ES:
     - default: Predeterminada
     - pills: Cápsulas
@@ -5761,16 +5772,330 @@ public:
 };
 } // namespace native
 
+
+
 #include <cstring>
+#include <span>
+#include <utility>
+
+namespace native::quick_rows {
+
+struct Layout {
+  uint32_t setter;
+  uint32_t extent;
+  uint32_t countOffset;
+  uint32_t vtable;
+  uint8_t interfaceOffset;
+};
+
+class Image {
+  std::span<const uint8_t> bytes_;
+
+public:
+  explicit Image(std::span<const uint8_t> bytes) : bytes_(bytes) {}
+
+  std::span<const uint8_t> At(size_t rva, size_t length) const {
+    if (rva > bytes_.size() || length > bytes_.size() - rva)
+      return {};
+    return bytes_.subspan(rva, length);
+  }
+
+  template <typename T>
+  std::optional<T> Read(size_t rva) const {
+    auto data = At(rva, sizeof(T));
+    if (data.empty())
+      return {};
+    T value;
+    std::memcpy(&value, data.data(), sizeof(value));
+    return value;
+  }
+};
+
+struct Section {
+  uint32_t rva = 0;
+  uint32_t size = 0;
+
+  bool Contains(uint64_t start, size_t length) const {
+    return size && start >= rva && start - rva <= size && length <= size - (start - rva);
+  }
+};
+
+// An instruction pattern with "??" for a displacement. The known layouts
+// share the opcode sequence, but the executable sections move between builds.
+inline bool Matches(std::span<const uint8_t> bytes, std::string_view pattern) {
+  auto nibble = [](char digit) {
+    return digit >= 'a' ? digit - 'a' + 10 : digit - '0';
+  };
+  for (auto b : bytes) {
+    if (pattern.size() < 2 || (pattern[0] != '?' &&
+        b != (nibble(pattern[0]) * 16 + nibble(pattern[1]))))
+      return false;
+    pattern.remove_prefix(2);
+    if (!pattern.empty() && pattern.front() == ' ')
+      pattern.remove_prefix(1);
+  }
+  return pattern.empty();
+}
+
+inline constexpr std::string_view setterPattern =
+    "40 53 48 83 ec 20 48 8b d9 39 91 ?? ?? ?? ?? 74 5a 89 91 ?? ?? ?? ??"
+    " 48 8d 15 ?? ?? ?? ?? 48 8d 4c 24 30 e8 ?? ?? ?? ?? 48 8b d0 48 8b cb e8 ?? ?? ?? ??"
+    " 48 8d 15 ?? ?? ?? ?? 48 8d 4c 24 30 e8 ?? ?? ?? ?? 48 8b d0 48 8b cb e8 ?? ?? ?? ??"
+    " 48 8d 15 ?? ?? ?? ?? 48 8d 4c 24 30 e8 ?? ?? ?? ?? 48 8b d0 48 8b cb e8 ?? ?? ?? ??"
+    " 48 83 c4 20 5b c3";
+
+inline constexpr std::string_view extentPattern =
+    "40 53 48 83 ec 40 48 8d 99 d8 00 00 00 0f 29 74 24 30 48 83 3b 00 0f 29 7c 24 20 74 40"
+    " 66 0f 6e b1 ?? ?? ?? ?? f3 0f e6 f6 f2 0f 59 35 ?? ?? ?? ?? e8 ?? ?? ?? ??"
+    " 48 8b cb 66 0f 6e f8 f3 0f e6 ff f2 0f 59 fe e8 ?? ?? ?? ??"
+    " 66 0f 2e f8 7a 02 74 0b 0f 28 cf 48 8b cb e8 ?? ?? ?? ??"
+    " 0f 28 74 24 30 0f 28 7c 24 20 48 83 c4 40 5b c3";
+
+inline constexpr size_t PatternLength(std::string_view pattern) {
+  return (pattern.size() + 1) / 3;
+}
+
+inline int64_t RipTarget(const Image& image, uint32_t displacementAt) {
+  auto displacement = image.Read<int32_t>(displacementAt);
+  return displacement ? int64_t(displacementAt) + 4 + *displacement : -1;
+}
+
+inline bool RefersTo(const Image& image, Section readOnly, uint32_t displacementAt,
+                     std::wstring_view text) {
+  auto target = RipTarget(image, displacementAt);
+  size_t length = (text.size() + 1) * sizeof(wchar_t);
+  if (target < 0 || !readOnly.Contains(target, length))
+    return false;
+  auto bytes = image.At(target, length);
+  return bytes.size() == length && bytes[length - 1] == 0 && bytes[length - 2] == 0 &&
+         std::memcmp(bytes.data(), text.data(), text.size() * sizeof(wchar_t)) == 0;
+}
+
+inline std::optional<std::pair<uint32_t, uint8_t>> FindGridTable(
+    const Image& image, uintptr_t loadAddress, Section text, Section readOnly,
+    IMAGE_DATA_DIRECTORY exceptions, uint32_t countOffset) {
+  // Find the constructor that stores the implementation vtable and initializes
+  // the same row count field. The class name distinguishes this table from
+  // those of nearby WinRT interfaces. The thunk exposes the interface offset.
+  constexpr auto storeVtableAndRows =
+      std::string_view("48 8d 05 ?? ?? ?? ?? 48 89 03 48 c7 83 ?? ?? ?? ?? 02 00 00 00");
+  constexpr auto interfaceThunk = std::string_view("48 8d 51 ?? 48 f7 d9 48 1b c0 48 23 c2 c3");
+  constexpr auto classNameEntry = std::string_view("40 53 48 83 ec 30 48 8b da 48 8d 15");
+  auto textEntry = [&](size_t slot, size_t length) -> std::optional<uint32_t> {
+    auto address = image.Read<uintptr_t>(slot);
+    if (!address || *address < loadAddress || !text.Contains(*address - loadAddress, length))
+      return {};
+    return uint32_t(*address - loadAddress);
+  };
+
+  std::optional<std::pair<uint32_t, uint8_t>> result;
+  auto end = uint64_t(exceptions.VirtualAddress) + exceptions.Size;
+  for (size_t i = exceptions.VirtualAddress; i < end; i += sizeof(RUNTIME_FUNCTION)) {
+    auto entry = image.Read<RUNTIME_FUNCTION>(i);
+    if (!entry || entry->BeginAddress >= entry->EndAddress || entry->EndAddress - entry->BeginAddress < 21 ||
+        !text.Contains(entry->BeginAddress, entry->EndAddress - entry->BeginAddress))
+      continue;
+    for (auto ip = entry->BeginAddress; ip <= entry->EndAddress - 21; ++ip) {
+      auto first = image.Read<uint8_t>(ip);
+      if (first != 0x48 || !Matches(image.At(ip, 21), storeVtableAndRows) ||
+          image.Read<uint32_t>(ip + 13) != countOffset)
+        continue;
+      auto table = RipTarget(image, ip + 3);
+      if (table < 0 || !readOnly.Contains(table, 6 * sizeof(void*)) || table % alignof(void*))
+        continue;
+      auto slot0 = textEntry(table, 6);
+      auto adjuster = textEntry(table + 3 * sizeof(void*), PatternLength(interfaceThunk));
+      auto runtimeName = textEntry(table + 5 * sizeof(void*), PatternLength(classNameEntry) + 4);
+      if (!slot0 || !adjuster || !runtimeName ||
+          !Matches(image.At(*slot0, 6), "b8 02 40 00 80 c3") ||
+          !Matches(image.At(*adjuster, PatternLength(interfaceThunk)), interfaceThunk) ||
+          !Matches(image.At(*runtimeName, PatternLength(classNameEntry)), classNameEntry) ||
+          !RefersTo(image, readOnly, *runtimeName + 12, L"ControlCenter.PaginatedGridView"))
+        continue;
+      auto delta = *image.Read<uint8_t>(*adjuster + 3);
+      if (!delta || delta > 0x40 || delta % alignof(void*))
+        continue;
+      auto candidate = std::pair(uint32_t(table), delta);
+      if (result && *result != candidate)
+        return {};
+      result = candidate;
+    }
+  }
+  return result;
+}
+
+inline std::optional<Layout> Resolve(std::span<const uint8_t> mappedImage, uintptr_t loadAddress) {
+  Image image(mappedImage);
+  auto dos = image.Read<IMAGE_DOS_HEADER>(0);
+  if (!dos || dos->e_magic != IMAGE_DOS_SIGNATURE || dos->e_lfanew <= 0)
+    return {};
+  size_t peOffset = dos->e_lfanew;
+  auto pe = image.Read<IMAGE_NT_HEADERS64>(peOffset);
+  if (!pe || pe->Signature != IMAGE_NT_SIGNATURE ||
+      pe->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
+      pe->FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER64) ||
+      pe->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC ||
+      pe->OptionalHeader.SizeOfImage != mappedImage.size() ||
+      pe->OptionalHeader.NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_EXCEPTION)
+    return {};
+
+  Section text, readOnly, unwind;
+  auto sectionOffset = peOffset + sizeof(IMAGE_NT_HEADERS64);
+  for (unsigned i = 0; i < pe->FileHeader.NumberOfSections; ++i) {
+    auto header = image.Read<IMAGE_SECTION_HEADER>(sectionOffset + i * sizeof(IMAGE_SECTION_HEADER));
+    if (!header)
+      return {};
+    Section section{header->VirtualAddress, header->Misc.VirtualSize};
+    if (image.At(section.rva, section.size).size() != section.size)
+      return {};
+    if (std::memcmp(header->Name, ".text", sizeof(".text")) == 0 &&
+        (header->Characteristics & IMAGE_SCN_MEM_EXECUTE) &&
+        (header->Characteristics & IMAGE_SCN_MEM_READ))
+      text = section;
+    if (std::memcmp(header->Name, ".rdata", sizeof(".rdata")) == 0 &&
+        (header->Characteristics & IMAGE_SCN_MEM_READ) &&
+        !(header->Characteristics & IMAGE_SCN_MEM_WRITE))
+      readOnly = section;
+    if (std::memcmp(header->Name, ".pdata", sizeof(".pdata")) == 0 &&
+        (header->Characteristics & IMAGE_SCN_MEM_READ))
+      unwind = section;
+  }
+  auto exceptions = pe->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION];
+  if (!text.size || !readOnly.size || !exceptions.Size ||
+      exceptions.Size % sizeof(RUNTIME_FUNCTION) ||
+      !unwind.Contains(exceptions.VirtualAddress, exceptions.Size))
+    return {};
+
+  Layout result{};
+  uint32_t extentCountOffset = 0;
+  auto end = uint64_t(exceptions.VirtualAddress) + exceptions.Size;
+  for (size_t i = exceptions.VirtualAddress; i < end; i += sizeof(RUNTIME_FUNCTION)) {
+    auto entry = image.Read<RUNTIME_FUNCTION>(i);
+    if (!entry || entry->BeginAddress >= entry->EndAddress)
+      continue;
+    uint32_t start = entry->BeginAddress;
+    size_t length = entry->EndAddress - start;
+    if (!text.Contains(start, length))
+      continue;
+    if (length == PatternLength(setterPattern) && Matches(image.At(start, length), setterPattern)) {
+      auto offset = *image.Read<uint32_t>(start + 11);
+      if (offset < sizeof(void*) || offset > 1024 || offset % alignof(int32_t) ||
+          image.Read<uint32_t>(start + 19) != offset ||
+          !RefersTo(image, readOnly, start + 26, L"PageHeight") ||
+          !RefersTo(image, readOnly, start + 54, L"NumberOfPages") ||
+          !RefersTo(image, readOnly, start + 82, L"QuickActionsPagerVisibility"))
+        continue;
+      if (result.setter)
+        return {};
+      result.setter = start;
+      result.countOffset = offset;
+    }
+    if (length == PatternLength(extentPattern) && Matches(image.At(start, length), extentPattern)) {
+      if (result.extent)
+        return {};
+      result.extent = start;
+      extentCountOffset = *image.Read<uint32_t>(start + 33);
+    }
+  }
+  if (!result.setter || !result.extent || result.countOffset != extentCountOffset)
+    return {};
+  auto table = FindGridTable(image, loadAddress, text, readOnly, exceptions, result.countOffset);
+  if (!table)
+    return {};
+  result.vtable = table->first;
+  result.interfaceOffset = table->second;
+  return result;
+}
+
+}  // namespace native::quick_rows
+
+
+namespace native::quick_rows {
+
+inline bool Readable(uintptr_t address, size_t length) {
+  MEMORY_BASIC_INFORMATION region{};
+  if (!VirtualQuery(reinterpret_cast<const void*>(address), &region, sizeof(region)) ||
+      region.State != MEM_COMMIT || (region.Protect & PAGE_GUARD))
+    return false;
+  auto protection = region.Protect & 0xFF;
+  if (protection != PAGE_READONLY && protection != PAGE_READWRITE &&
+      protection != PAGE_WRITECOPY && protection != PAGE_EXECUTE_READ &&
+      protection != PAGE_EXECUTE_READWRITE && protection != PAGE_EXECUTE_WRITECOPY)
+    return false;
+  auto base = reinterpret_cast<uintptr_t>(region.BaseAddress);
+  return address >= base && address - base <= region.RegionSize &&
+         length <= region.RegionSize - (address - base);
+}
+
+struct GridBinding {
+  winrt::com_ptr<::IUnknown> pin;
+  void* instance;
+  int rows;
+};
+
+inline std::optional<GridBinding> CheckInterface(winrt::com_ptr<::IUnknown> candidate,
+                                                 uintptr_t loadAddress, Layout const &layout) {
+  auto address = reinterpret_cast<uintptr_t>(candidate.get());
+  if (address < layout.interfaceOffset)
+    return {};
+  auto base = address - layout.interfaceOffset;
+  if (base % alignof(void*) || !Readable(base, layout.countOffset + sizeof(int32_t)))
+    return {};
+  uintptr_t vtable;
+  std::memcpy(&vtable, reinterpret_cast<const void*>(base), sizeof(vtable));
+  if (vtable != loadAddress + layout.vtable)
+    return {};
+  int32_t rows;
+  std::memcpy(&rows, reinterpret_cast<const void*>(base + layout.countOffset), sizeof(rows));
+  if (rows != 1 && rows != 2)
+    return {};
+  return GridBinding{std::move(candidate), reinterpret_cast<void*>(base), rows};
+}
+
+inline std::optional<GridBinding> BindGrid(winrt::Windows::Foundation::IInspectable const &grid,
+                                           uintptr_t loadAddress, Layout const &layout) {
+  if (!grid || winrt::get_class_name(grid) != L"ControlCenter.PaginatedGridView")
+    return {};
+  auto root = reinterpret_cast<winrt::impl::inspectable_abi*>(winrt::get_abi(grid));
+  // A successful QueryInterface pins the real object while an override is active.
+  constexpr winrt::guid knownInterface{0xad3ad37e, 0x5360, 0x5f2c, {0x86, 0x50, 0x6d, 0xd9, 0x61, 0x6e, 0x1d, 0x71}};
+  auto query = [&](winrt::guid const& iid) -> std::optional<GridBinding> {
+    winrt::com_ptr<::IUnknown> candidate;
+    if (FAILED(root->QueryInterface(iid, candidate.put_void())))
+      return {};
+    return CheckInterface(std::move(candidate), loadAddress, layout);
+  };
+  if (auto known = query(knownInterface))
+    return known;
+
+  uint32_t count = 0;
+  winrt::guid* raw = nullptr;
+  if (FAILED(root->GetIids(&count, &raw)))
+    return {};
+  struct FreeIids {
+    void operator()(winrt::guid* p) const { CoTaskMemFree(p); }
+  };
+  std::unique_ptr<winrt::guid, FreeIids> iids(raw);
+  if (!iids || count > 128)
+    return {};
+  for (auto const& iid : std::span(iids.get(), count))
+    if (auto match = query(iid))
+      return match;
+  return {};
+}
+
+}  // namespace native::quick_rows
+
+#include <psapi.h>
 #include <winrt/Windows.UI.Text.h>
 namespace native {
-// This ControlCenter build keeps page height, count and offsets in the native
-// PaginatedGridView. Resolve its methods only for the image whose ABI was checked.
+// Keep the native PaginatedGridView in charge of page height, count and offsets.
 using SetQuickRows = void(WINAPI *)(void *, int);
 using UpdateQuickExtent = void(WINAPI *)(void *);
 inline SetQuickRows originalSetQuickRows = nullptr;
 inline UpdateQuickExtent updateQuickExtent = nullptr;
-inline void *quickGridVtable = nullptr;
+inline std::optional<quick_rows::Layout> quickRowsLayout;
+inline uintptr_t quickRowsImage = 0;
 struct QuickRowsOverride {
   int nativeRows;
   int configuredRows;
@@ -5810,23 +6135,24 @@ inline void WINAPI KeepQuickRows(void *self, int rows) {
     updateQuickExtent(self);
 }
 inline void HookQuickRows(HMODULE dll) {
-  auto image = reinterpret_cast<BYTE *>(dll);
-  auto dos = reinterpret_cast<IMAGE_DOS_HEADER *>(image);
-  auto nt = reinterpret_cast<IMAGE_NT_HEADERS *>(image + dos->e_lfanew);
-  constexpr BYTE signature[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xd9,
-                                0x39, 0x91, 0xa8, 0, 0, 0, 0x74, 0x5a, 0x89, 0x91};
-  if (nt->FileHeader.TimeDateStamp != 1878679008 || nt->OptionalHeader.SizeOfImage != 4313088 ||
-      std::memcmp(image + 0x29424c, signature, sizeof(signature)) != 0) {
-    Wh_Log(L"Native Quick Settings row override unavailable for this ControlCenter image");
+  MODULEINFO module{};
+  if (!K32GetModuleInformation(GetCurrentProcess(), dll, &module, sizeof(module)))
+    return;
+  auto base = reinterpret_cast<uintptr_t>(module.lpBaseOfDll);
+  auto layout = quick_rows::Resolve(
+      {static_cast<const uint8_t*>(module.lpBaseOfDll), module.SizeOfImage}, base);
+  if (!layout) {
+    Wh_Log(L"Quick Settings row override unavailable for this ControlCenter layout");
     return;
   }
-  auto setter = reinterpret_cast<SetQuickRows>(image + 0x29424c);
-  if (*reinterpret_cast<void **>(image + 0x37f518) != image + 0x1018c0)
-    return;
-  updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(image + 0x2944d0);
-  quickGridVtable = image + 0x37f518;
-  if (!WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows))
+  auto setter = reinterpret_cast<SetQuickRows>(base + layout->setter);
+  if (!WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows)) {
     originalSetQuickRows = nullptr;
+    return;
+  }
+  updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(base + layout->extent);
+  quickRowsImage = base;
+  quickRowsLayout = layout;
 }
 // Quick Settings main page (ControlCenter.ControlCenterView). L1Grid holds a
 // light Border spanning TogglesGroup + SlidersGroup, then FooterGrid
@@ -6730,8 +7056,13 @@ class QuickPage {
       }
       bright_.Visibility(moved ? X::Visibility::Collapsed : X::Visibility::Visible);
     }
-    // Both backends use the same Night light / Display buttons and geometry.
-    auto shortcuts = sound::QuickShortcuts(settings_.quickShortcuts, show);
+    // A native row kept in place can already provide its own Display button.
+    bool nativeDisplay = !moved && nativeVisible && Find(nativeRow, [](auto const &e) {
+      auto button = e.template try_as<C::Button>();
+      return button && button.Visibility() == X::Visibility::Visible &&
+             String(button.CommandParameter()) == L"ms-settings:display";
+    });
+    auto shortcuts = sound::QuickShortcuts(settings_.quickShortcuts, show || nativeDisplay);
     bool changed = shortcuts != visibleShortcuts_;
     if (changed) {
       shortcuts_.Children().Clear();
@@ -7173,32 +7504,27 @@ class QuickPage {
     }
   }
   void TileRows(C::Grid const &l1) {
-    if (!originalSetQuickRows)
+    if (!originalSetQuickRows || !quickRowsLayout)
       return;
     auto paginated = Find(Named(l1, L"TogglesGroup"), [](auto const &e) {
       return Class(e) == L"ControlCenter.PaginatedGridView";
     });
     if (!paginated || paginated == tiledView_.get())
       return;
-    // The IPaginatedGridView subobject at +0x18 is returned by this image's
-    // QueryInterface. Verify the complete object's vtable before calling it.
-    constexpr GUID iid{0xad3ad37e, 0x5360, 0x5f2c, {0x86, 0x50, 0x6d, 0xd9, 0x61, 0x6e, 0x1d, 0x71}};
-    winrt::com_ptr<::IUnknown> iface;
-    if (FAILED(winrt::get_unknown(paginated)->QueryInterface(iid, iface.put_void())))
+    auto binding = quick_rows::BindGrid(paginated, quickRowsImage, *quickRowsLayout);
+    if (!binding)
       return;
-    auto self = reinterpret_cast<BYTE *>(iface.get()) - 0x18;
-    if (*reinterpret_cast<void **>(self) != quickGridVtable)
-      return;
-    int rows = *reinterpret_cast<int const *>(self + 0xa8);
+    auto self = binding->instance;
+    int rows = binding->rows;
     auto grid = Named(paginated, L"RootGridView").try_as<C::GridView>();
-    if (!grid || (rows != 1 && rows != 2))
+    if (!grid)
       return;
     // Until this grid is tracked, native calls leave the row count untouched.
     if (!TrackQuickRows(self, rows, settings_.quickActionRows))
       return;
     try {
-      journal_.undo.push_back([iface] {
-        RestoreQuickRows(reinterpret_cast<BYTE *>(iface.get()) - 0x18);
+      journal_.undo.push_back([binding = std::move(*binding)] {
+        RestoreQuickRows(binding.instance);
       });
     } catch (...) {
       RestoreQuickRows(self);
@@ -10082,7 +10408,9 @@ inline ModSettings ReadSettings() {
   settings.trayMiddleClickMute = Wh_GetIntSetting(L"trayMiddleClickMute") != 0;
   auto brightness = WindhawkUtils::StringSetting::make(L"brightnessMode");
   settings.brightnessEnabled = std::wstring_view(brightness.get()) != L"disabled";
-  auto rows = WindhawkUtils::StringSetting::make(L"quickActionRows");
+  auto rows = WindhawkUtils::StringSetting::make(L"appearance.quickActionRows");
+  if (!*rows.get())
+    rows = WindhawkUtils::StringSetting::make(L"quickActionRows");
   std::wstring_view rowCount(rows.get());
   if (rowCount.size() == 1 && rowCount.front() >= L'1' && rowCount.front() <= L'4')
     settings.quickActionRows = rowCount.front() - L'0';
