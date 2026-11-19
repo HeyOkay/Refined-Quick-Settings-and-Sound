@@ -1063,6 +1063,11 @@ class QuickPage {
     }
   }
 
+  double BatteryTrailingMargin() const {
+    // Native plate inset (2) + this margin (1.2) + shortcut inset (4)
+    // gives a 7.2-DIP gap: 9 physical pixels at 125%.
+    return visibleShortcuts_.empty() ? 6. : 1.2;
+  }
   // Move the shell's actual footer ItemsControl, not a copy of its battery icon.
   // Keep its item templates, commands, bindings and future collection changes.
   bool MoveBatteryFooter(X::FrameworkElement const &left, X::FrameworkElement const &footer) {
@@ -1113,7 +1118,8 @@ class QuickPage {
     Set(element, X::FrameworkElement::WidthProperty(), winrt::box_value(static_cast<double>(NAN)));
     Set(element, X::FrameworkElement::MinWidthProperty(), winrt::box_value(0.));
     Set(element, X::FrameworkElement::MinHeightProperty(), winrt::box_value(0.));
-    Set(element, X::FrameworkElement::MarginProperty(), winrt::box_value(X::Thickness{0, 0, 6, 0}));
+    Set(element, X::FrameworkElement::MarginProperty(),
+        winrt::box_value(X::Thickness{0, 0, BatteryTrailingMargin(), 0}));
     Set(element, X::FrameworkElement::HorizontalAlignmentProperty(),
         winrt::box_value(X::HorizontalAlignment::Right));
     Set(element, X::FrameworkElement::VerticalAlignmentProperty(),
@@ -1139,6 +1145,34 @@ class QuickPage {
            Class(element).c_str(), Class(parent).c_str());
     return true;
   }
+  void PositionBattery(X::FrameworkElement const &left) {
+    if (!settingsRow_ || !left || !left.IsLoaded() ||
+        settingsRow_.ColumnDefinitions().Size() != 3)
+      return;
+    auto slot = left;
+    for (auto parent = Parent(slot); parent && parent != settingsRow_; parent = Parent(slot))
+      slot = parent;
+    if (Parent(slot) != settingsRow_)
+      return;
+    double wanted = 0;
+    Find(left, [&](auto const &node) {
+      if (auto button = node.template try_as<C::Button>(); button && button.IsLoaded())
+        wanted = std::max(wanted, double(button.DesiredSize().Width));
+      return false;
+    });
+    if (wanted <= 0)
+      return;
+    auto root = settingsRow_.XamlRoot();
+    double scale = root ? root.RasterizationScale() : 1.;
+    double available = std::round(settingsRow_.ColumnDefinitions().GetAt(1).ActualWidth() * scale) -
+                       std::round(BatteryTrailingMargin() * scale);
+    // Enlarge the battery's layout slot into the free space on its left.
+    // The native content, symmetric padding and Settings geometry stay intact.
+    double shift = std::max(0., std::ceil(wanted * scale - 1e-6) - available) / scale;
+    X::Thickness margin{-shift, 0, BatteryTrailingMargin(), 0};
+    if (slot.Margin() != margin)
+      Set(slot, X::FrameworkElement::MarginProperty(), winrt::box_value(margin));
+  }
   void CompactBattery(X::FrameworkElement const &left) {
     // Match the gear: 36-DIP button, with a 2-DIP template inset on every
     // side, giving both native hover plates the same 32-DIP height.
@@ -1148,6 +1182,8 @@ class QuickPage {
           Set(button, X::FrameworkElement::HeightProperty(), winrt::box_value(36.));
           Set(button, X::FrameworkElement::MinHeightProperty(), winrt::box_value(0.));
           Set(button, X::FrameworkElement::MinWidthProperty(), winrt::box_value(0.));
+          Set(button, X::FrameworkElement::WidthProperty(), winrt::box_value(static_cast<double>(NAN)));
+          Set(button, X::FrameworkElement::MaxWidthProperty(), winrt::box_value(static_cast<double>(INFINITY)));
           Set(button, X::FrameworkElement::MarginProperty(), winrt::box_value(X::Thickness{}));
           Set(button, C::Control::PaddingProperty(), winrt::box_value(X::Thickness{8, 0, 8, 0}));
           Set(button, C::Control::HorizontalContentAlignmentProperty(),
@@ -1157,18 +1193,24 @@ class QuickPage {
           Set(button, X::FrameworkElement::VerticalAlignmentProperty(),
               winrt::box_value(X::VerticalAlignment::Center));
         }
-        // Remove the asymmetric 4,3,2,3 footer ItemsControl margin and any
-        // enclosing slot insets. The plate, not the percentage, ends at the
-        // slider rail: 6 DIP outside the button + 2 DIP inside its template.
-        for (auto slot = Parent(button); slot && slot != settingsRow_; slot = Parent(slot))
+        // Normalize native footer slots; measure the gap from the hover
+        // plate, including its 2-DIP inset, to the next button plate.
+        for (auto slot = Parent(button); slot && slot != settingsRow_; slot = Parent(slot)) {
+          bool outer = Parent(slot) == settingsRow_;
           if (First(slot, 75)) {
-            bool outer = Parent(slot) == settingsRow_;
             Set(slot, X::FrameworkElement::MarginProperty(),
-                winrt::box_value(X::Thickness{0, 0, outer ? 6. : 0., 0}));
+                winrt::box_value(X::Thickness{0, 0, outer ? BatteryTrailingMargin() : 0., 0}));
             Set(slot, X::FrameworkElement::MinHeightProperty(), winrt::box_value(0.));
+            Set(slot, X::FrameworkElement::WidthProperty(), winrt::box_value(static_cast<double>(NAN)));
+            Set(slot, X::FrameworkElement::MinWidthProperty(), winrt::box_value(0.));
+            Set(slot, X::FrameworkElement::MaxWidthProperty(), winrt::box_value(static_cast<double>(INFINITY)));
             Set(slot, X::FrameworkElement::VerticalAlignmentProperty(),
                 winrt::box_value(X::VerticalAlignment::Center));
           }
+          if (outer && std::abs(slot.Margin().Right - BatteryTrailingMargin()) > .001)
+            Set(slot, X::FrameworkElement::MarginProperty(),
+                winrt::box_value(X::Thickness{0, 0, BatteryTrailingMargin(), 0}));
+        }
         if (auto presenter = Named(button, L"ContentPresenter"); presenter && First(presenter, 71))
           Set(presenter, X::FrameworkElement::MarginProperty(), winrt::box_value(X::Thickness{2, 2, 2, 2}));
         // Keep the native icon/font/bindings, but centre both icon branches and
@@ -1191,13 +1233,7 @@ class QuickPage {
       }
       return false; // Visit all native buttons without stopping the traversal.
     });
-    // Reserve the occupied action slots and the battery width.
-    if (title_ && settingsRow_.ActualWidth() > 0) {
-      double available = std::max(
-          0., settingsRow_.ActualWidth() - shortcuts_.ActualWidth() - left.ActualWidth() - 6. - 12.);
-      if (title_.MaxWidth() != available)
-        title_.MaxWidth(available);
-    }
+    PositionBattery(left);
   }
   void Footer() {
     auto footer = Named(view_, L"FooterGrid");
