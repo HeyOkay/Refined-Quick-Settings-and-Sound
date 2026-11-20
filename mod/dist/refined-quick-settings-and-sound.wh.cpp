@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.9.11
+// @version 0.9.12
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -17,7 +17,7 @@
 // @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lpowrprof -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
-// Build: 194
+// Build: 195
 // Modified by Constantine Travkin on 2026-11-14.
 // Based on HeyOkay's v0.1.154 (source blob 7229ac098ad0e8732905b831259d2aa99984bb31).
 // Upstream: https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -6468,6 +6468,23 @@ inline constexpr std::string_view extentPattern =
     " 66 0f 2e f8 7a 02 74 0b 0f 28 cf 48 8b cb e8 ?? ?? ?? ??"
     " 0f 28 74 24 30 0f 28 7c 24 20 48 83 c4 40 5b c3";
 
+// Some layouts call a page-height helper instead of multiplying the row count inline.
+inline constexpr std::string_view extentUsingPageHeightPattern =
+    "48 89 5c 24 08 57 48 83 ec 40 48 8d 99 ?? ?? ?? ?? 0f 29 74 24 30 48 83 3b 00"
+    " 48 8b f9 0f 29 7c 24 20 74 37 e8 ?? ?? ?? ?? 48 8b cf 66 0f 6e f0 f3 0f e6 f6"
+    " e8 ?? ?? ?? ?? 48 8b cb 0f 28 f8 f2 0f 59 fe e8 ?? ?? ?? ??"
+    " 66 0f 2e f8 7a 02 74 0b 0f 28 cf 48 8b cb e8 ?? ?? ?? ??"
+    " 48 8b 5c 24 50 0f 28 74 24 30 0f 28 7c 24 20 48 83 c4 40 5f c3";
+
+inline constexpr std::string_view pageHeightPattern =
+    "48 8b c4 48 89 58 18 48 89 70 20 57 48 83 ec 20 48 8b d9 33 ff 89 78 08"
+    " 40 38 b9 ?? ?? ?? ?? 74 34 48 81 c1 ?? ?? ?? ?? 48 39 39 74 28 48 8d 50 10"
+    " e8 ?? ?? ?? ?? 90 bf 01 00 00 00 89 7c 24 30 48 8b c8 e8 ?? ?? ?? ??"
+    " 3b 83 ?? ?? ?? ?? 77 05 40 8a f7 eb 03 40 32 f6 40 f6 c7 01 74 0a 48 8d 4c 24 38"
+    " e8 ?? ?? ?? ?? 40 84 f6 74 0a f2 0f 10 83 ?? ?? ?? ?? eb 14"
+    " 66 0f 6e 83 ?? ?? ?? ?? f3 0f e6 c0 f2 0f 59 83 ?? ?? ?? ??"
+    " 48 8b 5c 24 40 48 8b 74 24 48 48 83 c4 20 5f c3";
+
 inline constexpr size_t PatternLength(std::string_view pattern) {
   return (pattern.size() + 1) / 3;
 }
@@ -6475,6 +6492,29 @@ inline constexpr size_t PatternLength(std::string_view pattern) {
 inline int64_t RipTarget(const Image& image, uint32_t displacementAt) {
   auto displacement = image.Read<int32_t>(displacementAt);
   return displacement ? int64_t(displacementAt) + 4 + *displacement : -1;
+}
+
+inline std::optional<uint32_t> ExtentRowCountOffset(const Image& image, Section text,
+                                                     uint32_t start, size_t length) {
+  auto body = image.At(start, length);
+  if (length == PatternLength(extentPattern) && Matches(body, extentPattern))
+    return image.Read<uint32_t>(start + 33);
+  if (length != PatternLength(extentUsingPageHeightPattern) ||
+      !Matches(body, extentUsingPageHeightPattern))
+    return {};
+
+  auto helper = RipTarget(image, start + 53);
+  if (helper < 0 || !text.Contains(helper, PatternLength(pageHeightPattern)) ||
+      !Matches(image.At(helper, PatternLength(pageHeightPattern)), pageHeightPattern))
+    return {};
+  auto count = *image.Read<uint32_t>(helper + 123);
+  // Check the column count, tile-height and repeater fields against the row field.
+  if (count < 0x10 || count > 1024 || image.Read<uint32_t>(helper + 74) != count - 0x10 ||
+      image.Read<uint32_t>(helper + 113) != count - 8 ||
+      image.Read<uint32_t>(helper + 135) != count - 8 ||
+      image.Read<uint32_t>(start + 13) != count + 0x30)
+    return {};
+  return count;
 }
 
 inline bool RefersTo(const Image& image, Section readOnly, uint32_t displacementAt,
@@ -6494,8 +6534,11 @@ inline std::optional<std::pair<uint32_t, uint8_t>> FindGridTable(
   // Find the constructor that stores the implementation vtable and initializes
   // the same row count field. The class name distinguishes this table from
   // those of nearby WinRT interfaces. The thunk exposes the interface offset.
-  constexpr auto storeVtableAndRows =
-      std::string_view("48 8d 05 ?? ?? ?? ?? 48 89 03 48 c7 83 ?? ?? ?? ?? 02 00 00 00");
+  constexpr auto storeVtable = std::string_view("48 8d 05 ?? ?? ?? ?? 48 89 03");
+  constexpr auto initRows = std::string_view("48 c7 83 ?? ?? ?? ?? 02 00 00 00");
+  constexpr auto initColumnsHeightAndRows = std::string_view(
+      "c7 83 ?? ?? ?? ?? 03 00 00 00 48 b8 ?? ?? ?? ?? ?? ?? ?? ??"
+      " 48 89 83 ?? ?? ?? ?? c7 83 ?? ?? ?? ?? 02 00 00 00");
   constexpr auto interfaceThunk = std::string_view("48 8d 51 ?? 48 f7 d9 48 1b c0 48 23 c2 c3");
   constexpr auto classNameEntry = std::string_view("40 53 48 83 ec 30 48 8b da 48 8d 15");
   auto textEntry = [&](size_t slot, size_t length) -> std::optional<uint32_t> {
@@ -6514,8 +6557,20 @@ inline std::optional<std::pair<uint32_t, uint8_t>> FindGridTable(
       continue;
     for (auto ip = entry->BeginAddress; ip <= entry->EndAddress - 21; ++ip) {
       auto first = image.Read<uint8_t>(ip);
-      if (first != 0x48 || !Matches(image.At(ip, 21), storeVtableAndRows) ||
-          image.Read<uint32_t>(ip + 13) != countOffset)
+      if (first != 0x48 || !Matches(image.At(ip, PatternLength(storeVtable)), storeVtable))
+        continue;
+      auto init = ip + PatternLength(storeVtable);
+      bool rowsInitialized = Matches(image.At(init, PatternLength(initRows)), initRows) &&
+                             image.Read<uint32_t>(init + 3) == countOffset;
+      if (!rowsInitialized && countOffset >= 0x10 &&
+          entry->EndAddress - init >= PatternLength(initColumnsHeightAndRows)) {
+        rowsInitialized = Matches(image.At(init, PatternLength(initColumnsHeightAndRows)),
+                                  initColumnsHeightAndRows) &&
+                          image.Read<uint32_t>(init + 2) == countOffset - 0x10 &&
+                          image.Read<uint32_t>(init + 23) == countOffset - 8 &&
+                          image.Read<uint32_t>(init + 29) == countOffset;
+      }
+      if (!rowsInitialized)
         continue;
       auto table = RipTarget(image, ip + 3);
       if (table < 0 || !readOnly.Contains(table, 6 * sizeof(void*)) || table % alignof(void*))
@@ -6607,11 +6662,11 @@ inline std::optional<Layout> Resolve(std::span<const uint8_t> mappedImage, uintp
       result.setter = start;
       result.countOffset = offset;
     }
-    if (length == PatternLength(extentPattern) && Matches(image.At(start, length), extentPattern)) {
+    if (auto offset = ExtentRowCountOffset(image, text, start, length)) {
       if (result.extent)
         return {};
       result.extent = start;
-      extentCountOffset = *image.Read<uint32_t>(start + 33);
+      extentCountOffset = *offset;
     }
   }
   if (!result.setter || !result.extent || result.countOffset != extentCountOffset)
