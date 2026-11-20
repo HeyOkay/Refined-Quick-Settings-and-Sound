@@ -1198,7 +1198,7 @@ inline bool HookTray(HMODULE module) {
         L"struct winrt::Windows::UI::Xaml::Input::TappedRoutedEventArgs)"},
        &originalTapped,
        Tapped}};
-  auto result = WindhawkUtils::HookSymbols(module, hooks, ARRAYSIZE(hooks));
+  auto result = WindhawkUtils::HookSymbols(module, hooks, ARRAYSIZE(hooks), &shellSymbolOptions);
   return result;
 }
 using Load = decltype(&LoadLibraryExW);
@@ -1237,7 +1237,7 @@ inline bool Initialize(HINSTANCE instance) {
        &getHost},
       {{LR"(public: int __cdecl TaskbarHost::FrameHeight(void)const )"}, &frameHeight},
       {{LR"(public: void __cdecl std::_Ref_count_base::_Decref(void))"}, &decref}};
-  if (!WindhawkUtils::HookSymbols(taskbar, roots, ARRAYSIZE(roots)))
+  if (!WindhawkUtils::HookSymbols(taskbar, roots, ARRAYSIZE(roots), &shellSymbolOptions))
     Wh_Log(L"Taskbar root symbols unavailable; constructor/tap discovery retained");
   if (auto module = GetModuleHandleW(L"SystemTray.dll")) {
     moduleHooked = true;

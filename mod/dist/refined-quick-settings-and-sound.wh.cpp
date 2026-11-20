@@ -7,7 +7,7 @@
 // @description:de-DE Mehr Optionen für die Schnelleinstellungen und direkter Zugriff auf die Soundeinstellungen
 // @description:pt-BR Mais opções para as configurações rápidas e acesso direto aos ajustes de som
 // @description:zh-CN 快速设置面板的更多选项，快速打开声音设置
-// @version 0.7.3
+// @version 0.9.11
 // @author HeyOkay, CTravkin
 // @github https://github.com/HeyOkay
 // @homepage https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -17,7 +17,7 @@
 // @compilerOptions -DWIN32_LEAN_AND_MEAN -lcomctl32 -lole32 -loleaut32 -lruntimeobject -liphlpapi -lshlwapi -lshell32 -lpowrprof -luuid
 // @license GPL-3.0-only
 // ==/WindhawkMod==
-// Build: 175
+// Build: 194
 // Modified by Constantine Travkin on 2026-11-14.
 // Based on HeyOkay's v0.1.154 (source blob 7229ac098ad0e8732905b831259d2aa99984bb31).
 // Upstream: https://github.com/HeyOkay/Refined-Quick-Settings-and-Sound
@@ -45,11 +45,8 @@ is restored when the mod is unloaded.
 - The mod places Night light and Display settings beside the brightness slider. If the native slider cannot be moved, Windows keeps its original row. Night light uses the native quick action when available and opens Night light settings otherwise.
 - On devices with a battery, the battery button moves into the **Settings** row.
 
-**Appearance**
-
 - **Rows of tiles** sets 1–4 rows per page with Windows pagination. If the mod cannot recognize the tile grid layout, Windows uses its default row count.
 - **Tile shape** rounds the outer edges of Quick Settings tiles in **Pills** mode.
-- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 
 **Sound**
 
@@ -57,8 +54,13 @@ is restored when the mod is unloaded.
 - Change the output and input devices and the spatial sound provider from
   dropdown lists.
 - Below them is a reworked Volume mixer for the apps. It starts collapsed the first time Sound opens in each ShellHost process and remembers its state on subsequent openings.
+- **Microphone volume** defaults to **Off**. **Auto** adds a volume slider above system volume when the selected microphone has an adjustable level. The button on the left mutes and unmutes the microphone without changing its level.
+- **Microphone settings shortcut** shows the volume percentage by default. **Device settings** replaces it with a button for the selected microphone's Windows settings.
+- **Sound settings shortcut** puts the Windows Sound settings button beside system volume by default. **None (Percentage)** shows the volume percentage. **Device settings** opens the selected output device's settings. Both modes move the Sound settings button to the header.
+- Turn off **Spatial sound** to hide the mode selector.
+- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 - Volume sliders show the new value when dragged or scrolled. The default wheel step is 2 percentage points.
-- Press an app's icon to mute and restore it, or its volume number to set it to 100.
+- Press a volume number to set that slider to 100. The app icon mutes or restores the app.
 - **Hide from the volume mixer** takes app names or executable names, one per row. Hidden apps keep playing audio.
 
 **Taskbar**
@@ -79,17 +81,7 @@ Requires Windows 11 24H2 or later (x64).
 
 Open Quick Settings with Win+A and Sound with Win+Ctrl+V. When **Quick access to Sound** is enabled, the taskbar volume icon opens Sound as well. Adjust the mod's options on its **Settings** tab in Windhawk.
 
-After updating, check **Rows of tiles** under **Appearance**.
-
 Disable other mods or styles that change the same controls. If the panels do not update after enabling the mod, close and reopen them. If needed, restart ShellHost and check the Windhawk log.
-
-## Updating from the Windhawk catalog version 0.1.154
-
-If **Hidden applications** was filled in before the update, move those entries before adding any new rows under **Hide from the volume mixer**.
-
-1. Open **Advanced** → **Mod settings**. In the **Load** menu, choose **Load formatted**.
-2. Replace the `hiddenApps` string with one indexed setting per entry. For example, `"hiddenApps": "iCloud; Example.exe"` becomes `"hiddenApplications[0]": "iCloud"` and `"hiddenApplications[1]": "Example.exe"`. If rows are already filled in, use the next free indices. Remove `hiddenApps` in the same edit and keep the other settings.
-3. Click **Save** and check that the entries appear under **Hide from the volume mixer** on the **Settings** tab.
 
 ## Licenses
 
@@ -110,127 +102,184 @@ in this source file.
 // ==/WindhawkModReadme==
 // ==WindhawkModSettings==
 /*
-- quickSoundAccess: true
-  $name: "Quick access to Sound"
-  $name:ru-RU: "Быстрый доступ к настройкам звука"
-  $name:es-ES: "Acceso rápido al sonido"
-  $name:de-DE: "Schnellzugriff auf Sound"
-  $name:pt-BR: "Acesso rápido ao som"
-  $name:zh-CN: "快速访问声音设置"
-  $description: "Opens the Sound panel from the taskbar volume icon"
-  $description:ru-RU: "Панель «Звук» открывается по нажатию на значок громкости"
-  $description:es-ES: "Abre el panel Sonido desde el icono de volumen de la barra de tareas"
-  $description:de-DE: "Öffnet das Soundfenster über das Lautstärkesymbol in der Taskleiste"
-  $description:pt-BR: "Abre o painel Som pelo ícone de volume da barra de tarefas"
-  $description:zh-CN: "单击任务栏上的音量图标可直接打开“声音”面板"
-- trayMiddleClickMute: false
-  $name: "Middle-click to mute"
-  $name:ru-RU: "Выключение звука средним кликом"
-  $name:es-ES: "Silenciar con el botón central"
-  $name:de-DE: "Ton per Mittelklick stummschalten"
-  $name:pt-BR: "Silenciar com o botão do meio"
-  $name:zh-CN: "单击鼠标中键静音"
-  $description: "Middle-click the taskbar volume icon to mute or unmute"
-  $description:ru-RU: "Средний клик по значку громкости на панели задач выключает или включает звук"
-  $description:es-ES: "El botón central sobre el icono de volumen de la barra de tareas silencia o reactiva el sonido"
-  $description:de-DE: "Ein Mittelklick auf das Lautstärkesymbol in der Taskleiste schaltet den Ton aus oder wieder ein"
-  $description:pt-BR: "O botão do meio no ícone de volume da barra de tarefas ativa ou desativa o som"
-  $description:zh-CN: "在任务栏的音量图标上单击鼠标中键可静音或取消静音"
-- volumeWheelStep: 2
-  $name: Volume wheel step
-  $name:ru-RU: Шаг громкости при прокрутке
-  $name:es-ES: Paso de volumen con la rueda del ratón
-  $name:de-DE: Lautstärkeschritt mit dem Mausrad
-  $name:pt-BR: Passo do volume com a roda do mouse
-  $name:zh-CN: 鼠标滚轮音量步长
-  $description: Percentage points per notch over a volume slider, from 1 to 100
-  $description:ru-RU: Изменение громкости за деление колеса, от 1 до 100 процентных пунктов
-  $description:es-ES: Puntos porcentuales por paso de rueda sobre un control de volumen, de 1 a 100
-  $description:de-DE: Prozentpunkte pro Mausradschritt über einem Lautstärkeregler, von 1 bis 100
-  $description:pt-BR: Pontos percentuais por passo da roda sobre um controle de volume, de 1 a 100
-  $description:zh-CN: 在音量滑块上滚动一格改变的百分点，范围为 1 到 100
-- brightnessMode: auto
-  $name: Display brightness
-  $name:ru-RU: Яркость дисплея
-  $name:es-ES: Brillo de la pantalla
-  $name:de-DE: Anzeigehelligkeit
-  $name:pt-BR: Brilho da tela
-  $name:zh-CN: 显示亮度
-  $description: In Auto mode, the slider appears when brightness can be adjusted
-  $description:ru-RU: В режиме «Авто» ползунок виден, если яркость можно регулировать
-  $description:es-ES: En modo automático, el control se muestra si el brillo se puede ajustar
-  $description:de-DE: Im Modus Automatisch erscheint der Regler, wenn die Helligkeit einstellbar ist
-  $description:pt-BR: No modo automático, o controle aparece quando é possível ajustar o brilho
-  $description:zh-CN: 自动模式下，可调节亮度时显示滑块
-  $options:
-  - auto: Auto
-  - disabled: Disable
-  $options:ru-RU:
-  - auto: Авто
-  - disabled: Отключить
-  $options:es-ES:
-  - auto: Automático
-  - disabled: Desactivar
-  $options:de-DE:
-  - auto: Automatisch
-  - disabled: Deaktivieren
-  $options:pt-BR:
-  - auto: Automático
-  - disabled: Desativar
-  $options:zh-CN:
-  - auto: 自动
-  - disabled: 禁用
-- appearance:
-  - quickActionRows: "2"
-    $name: Rows of tiles
-    $name:ru-RU: Строки плиток
-    $name:es-ES: Filas de mosaicos
-    $name:de-DE: Kachelzeilen in den Schnelleinstellungen
-    $name:pt-BR: Linhas de blocos nas configurações rápidas
-    $name:zh-CN: 快速设置磁贴行数
-    $description: How many rows fit on each Quick Settings page
-    $description:ru-RU: Сколько строк помещается на одной странице быстрых настроек
-    $description:es-ES: Número de filas de mosaicos por página de Configuración rápida
-    $description:de-DE: Anzahl der Kachelzeilen pro Seite der Schnelleinstellungen
-    $description:pt-BR: Número de linhas por página das Configurações rápidas
-    $description:zh-CN: 每页快速设置显示的磁贴行数
+- taskbar:
+  - openSoundFromVolumeIcon: true
+    $name: "Quick access to Sound"
+    $name:ru-RU: "Быстрый доступ к настройкам звука"
+    $name:es-ES: "Acceso rápido al sonido"
+    $name:de-DE: "Schnellzugriff auf Sound"
+    $name:pt-BR: "Acesso rápido ao som"
+    $name:zh-CN: "快速访问声音设置"
+    $description: "Opens the Sound panel from the taskbar volume icon"
+    $description:ru-RU: "Панель «Звук» открывается по нажатию на значок громкости"
+    $description:es-ES: "Abre el panel Sonido desde el icono de volumen de la barra de tareas"
+    $description:de-DE: "Öffnet das Soundfenster über das Lautstärkesymbol in der Taskleiste"
+    $description:pt-BR: "Abre o painel Som pelo ícone de volume da barra de tarefas"
+    $description:zh-CN: "单击任务栏上的音量图标可直接打开“声音”面板"
+  - middleClickMute: false
+    $name: "Middle-click to mute"
+    $name:ru-RU: "Выключение звука средним кликом"
+    $name:es-ES: "Silenciar con el botón central"
+    $name:de-DE: "Ton per Mittelklick stummschalten"
+    $name:pt-BR: "Silenciar com o botão do meio"
+    $name:zh-CN: "单击鼠标中键静音"
+    $description: "Middle-click the taskbar volume icon to mute or unmute"
+    $description:ru-RU: "Клик средней кнопкой мыши по значку громкости на панели задач выключает или включает звук"
+    $description:es-ES: "El botón central sobre el icono de volumen de la barra de tareas silencia o reactiva el sonido"
+    $description:de-DE: "Ein Mittelklick auf das Lautstärkesymbol in der Taskleiste schaltet den Ton aus oder wieder ein"
+    $description:pt-BR: "O botão do meio no ícone de volume da barra de tarefas ativa ou desativa o som"
+    $description:zh-CN: "在任务栏的音量图标上单击鼠标中键可静音或取消静音"
+  $name: Taskbar
+  $name:ru-RU: Панель задач
+  $name:es-ES: Barra de tareas
+  $name:de-DE: Taskleiste
+  $name:pt-BR: Barra de tarefas
+  $name:zh-CN: 任务栏
+- sound:
+  - volumeWheelStep: 2
+    $name: Volume step
+    $name:ru-RU: Шаг громкости
+    $name:es-ES: Paso del volumen
+    $name:de-DE: Lautstärkeschritt
+    $name:pt-BR: Passo do volume
+    $name:zh-CN: 音量步长
+    $description: Volume change per mouse wheel notch, from 1 to 100 percentage points
+    $description:ru-RU: Изменение громкости за деление прокрутки колеса, от 1 до 100 процентных пунктов
+    $description:es-ES: Cambio de volumen por cada paso de la rueda del ratón, de 1 a 100 puntos porcentuales
+    $description:de-DE: Lautstärkeänderung pro Mausradraste, von 1 bis 100 Prozentpunkten
+    $description:pt-BR: Variação do volume por passo da roda do mouse, de 1 a 100 pontos percentuais
+    $description:zh-CN: 鼠标滚轮每滚动一格时的音量变化，范围为 1 到 100 个百分点
+  - microphoneVolumeMode: disabled
+    $name: Microphone volume
+    $name:ru-RU: Громкость микрофона
+    $name:es-ES: Volumen del micrófono
+    $name:de-DE: Mikrofonlautstärke
+    $name:pt-BR: Volume do microfone
+    $name:zh-CN: 麦克风音量
+    $description: Shows a slider for the selected microphone above the system volume
+    $description:ru-RU: Показывает ползунок громкости выбранного микрофона над общей громкостью
+    $description:es-ES: Muestra un control para el micrófono seleccionado encima del volumen del sistema
+    $description:de-DE: Zeigt über der Systemlautstärke einen Regler für das ausgewählte Mikrofon an
+    $description:pt-BR: Mostra um controle para o microfone selecionado acima do volume do sistema
+    $description:zh-CN: 在系统音量上方显示所选麦克风的音量滑块
     $options:
-    - "1": "1"
-    - "2": "2"
-    - "3": "3"
-    - "4": "4"
-  - quickTiles: default
-    $name: Tile shape
-    $name:ru-RU: Форма плиток
-    $name:es-ES: Forma de los mosaicos
-    $name:de-DE: Kachelform
-    $name:pt-BR: Forma dos blocos
-    $name:zh-CN: 磁贴形状
-    $description: In Pills mode, Quick Settings tiles have rounded outer edges
-    $description:ru-RU: В режиме «Капсулы» скругляются внешние края плиток быстрых настроек
-    $description:es-ES: En el modo Cápsulas se redondean los bordes exteriores de los mosaicos de Configuración rápida
-    $description:de-DE: Die Kapselform rundet die Außenkanten der Schnelleinstellungskacheln ab
-    $description:pt-BR: No modo Cápsulas, as bordas externas dos blocos das Configurações rápidas ficam arredondadas
-    $description:zh-CN: 选择胶囊形后，快速设置磁贴的外侧边缘会变圆
-    $options:
-    - default: Default
-    - pills: Pills
+    - auto: Auto
+    - disabled: Off
     $options:ru-RU:
-    - default: По умолчанию
-    - pills: Капсулы
+    - auto: Авто
+    - disabled: Выключено
     $options:es-ES:
-    - default: Predeterminada
-    - pills: Cápsulas
+    - auto: Automático
+    - disabled: Desactivado
     $options:de-DE:
-    - default: Standard
-    - pills: Kapselform
+    - auto: Automatisch
+    - disabled: Aus
     $options:pt-BR:
-    - default: Padrão
-    - pills: Cápsulas
+    - auto: Automático
+    - disabled: Desativado
     $options:zh-CN:
-    - default: 默认
-    - pills: 胶囊形
-  - soundPickers: default
+    - auto: 自动
+    - disabled: 关闭
+  - microphoneVolumeRight: percentage
+    $name: Microphone settings shortcut
+    $name:ru-RU: Переход к настройкам микрофона
+    $name:es-ES: Acceso a la configuración del micrófono
+    $name:de-DE: Verknüpfung zu den Mikrofoneinstellungen
+    $name:pt-BR: Atalho para as configurações do microfone
+    $name:zh-CN: 麦克风设置快捷方式
+    $description: Shows a button for the selected input device’s settings in place of the volume percentage
+    $description:ru-RU: Отображение кнопки для перехода к настройкам выбранного устройства ввода вместо процента громкости
+    $description:es-ES: Muestra un botón para abrir la configuración del dispositivo de entrada seleccionado en lugar del porcentaje de volumen
+    $description:de-DE: Zeigt statt der Lautstärke in Prozent eine Schaltfläche für die Einstellungen des ausgewählten Eingabegeräts an
+    $description:pt-BR: Exibe um botão para abrir as configurações do dispositivo de entrada selecionado no lugar da porcentagem do volume
+    $description:zh-CN: 显示所选输入设备的设置快捷按钮，替代音量百分比
+    $options:
+    - percentage: None (Percentage)
+    - deviceSettings: Device settings
+    $options:ru-RU:
+    - percentage: Нет (Проценты)
+    - deviceSettings: Параметры устройства
+    $options:es-ES:
+    - percentage: Ninguno (Porcentaje)
+    - deviceSettings: Configuración del dispositivo
+    $options:de-DE:
+    - percentage: Keine (Prozent)
+    - deviceSettings: Geräteeinstellungen
+    $options:pt-BR:
+    - percentage: Nenhum (Porcentagem)
+    - deviceSettings: Configurações do dispositivo
+    $options:zh-CN:
+    - percentage: 无（百分比）
+    - deviceSettings: 设备设置
+  - systemVolumeRight: soundSettings
+    $name: Sound settings shortcut
+    $name:ru-RU: Переход к настройкам звука
+    $name:es-ES: Acceso a la configuración de sonido
+    $name:de-DE: Verknüpfung zu den Soundeinstellungen
+    $name:pt-BR: Atalho para as configurações de som
+    $name:zh-CN: 声音设置快捷方式
+    $description: Shows a shortcut to Sound settings, a shortcut to the selected output device’s settings, or the system volume percentage
+    $description:ru-RU: Отображение перехода к настройкам звука, параметрам выбранного устройства вывода или процента общей громкости
+    $description:es-ES: Muestra un acceso a la configuración de sonido, un acceso a la configuración del dispositivo de salida seleccionado o el porcentaje del volumen del sistema
+    $description:de-DE: Zeigt eine Schaltfläche für die Soundeinstellungen, eine für die Einstellungen des ausgewählten Ausgabegeräts oder die Systemlautstärke in Prozent an
+    $description:pt-BR: Exibe um atalho para as configurações de som, um atalho para as configurações do dispositivo de saída selecionado ou a porcentagem do volume do sistema
+    $description:zh-CN: 显示声音设置快捷按钮、所选输出设备的设置快捷按钮或系统音量百分比
+    $options:
+    - soundSettings: Sound settings
+    - percentage: None (Percentage)
+    - deviceSettings: Device settings
+    $options:ru-RU:
+    - soundSettings: Параметры звука
+    - percentage: Нет (Проценты)
+    - deviceSettings: Параметры устройства
+    $options:es-ES:
+    - soundSettings: Configuración de sonido
+    - percentage: Ninguno (Porcentaje)
+    - deviceSettings: Configuración del dispositivo
+    $options:de-DE:
+    - soundSettings: Soundeinstellungen
+    - percentage: Keine (Prozent)
+    - deviceSettings: Geräteeinstellungen
+    $options:pt-BR:
+    - soundSettings: Configurações de som
+    - percentage: Nenhum (Porcentagem)
+    - deviceSettings: Configurações do dispositivo
+    $options:zh-CN:
+    - soundSettings: 声音设置
+    - percentage: 无（百分比）
+    - deviceSettings: 设备设置
+  - spatialSoundMenu: enabled
+    $name: Spatial sound
+    $name:ru-RU: Пространственный звук
+    $name:es-ES: Sonido espacial
+    $name:de-DE: Raumklang
+    $name:pt-BR: Som espacial
+    $name:zh-CN: 空间音效
+    $description: Menu for selecting a spatial audio mode
+    $description:ru-RU: Меню выбора режима пространственного аудио
+    $description:es-ES: Menú para elegir un modo de audio espacial
+    $description:de-DE: Menü zur Auswahl des Raumklangmodus
+    $description:pt-BR: Menu para escolher um modo de áudio espacial
+    $description:zh-CN: 用于选择空间音频模式的菜单
+    $options:
+    - enabled: On
+    - disabled: Off
+    $options:ru-RU:
+    - enabled: Включено
+    - disabled: Выключено
+    $options:es-ES:
+    - enabled: Activado
+    - disabled: Desactivado
+    $options:de-DE:
+    - enabled: Ein
+    - disabled: Aus
+    $options:pt-BR:
+    - enabled: Ativado
+    - disabled: Desativado
+    $options:zh-CN:
+    - enabled: 开启
+    - disabled: 关闭
+  - selectorShape: default
     $name: Sound field shape
     $name:ru-RU: Форма полей устройств
     $name:es-ES: Forma de los selectores
@@ -261,390 +310,490 @@ in this source file.
     $options:zh-CN:
     - default: 默认
     - pills: 胶囊形
-  $name: Appearance
-  $name:ru-RU: Внешний вид
-  $name:es-ES: Apariencia
-  $name:de-DE: Darstellung
-  $name:pt-BR: Aparência
-  $name:zh-CN: 外观
+  - hiddenApplications: [""]
+    $name: "Hide from the volume mixer"
+    $name:ru-RU: "Скрыть в микшере громкости"
+    $name:es-ES: "Ocultar en el mezclador de volumen"
+    $name:de-DE: "Im Lautstärkemixer ausblenden"
+    $name:pt-BR: "Ocultar no mixer de volume"
+    $name:zh-CN: "在音量合成器中隐藏"
+    $description: "One app per row, by name or executable, for example iCloud or iCloudHome.exe"
+    $description:ru-RU: "По одному названию или имени файла на строку, например iCloud или iCloudHome.exe"
+    $description:es-ES: "Una aplicación por fila, por nombre o archivo ejecutable, por ejemplo, iCloud o iCloudHome.exe"
+    $description:de-DE: "Eine App pro Zeile anhand ihres Namens oder ihrer ausführbaren Datei, etwa iCloud oder iCloudHome.exe"
+    $description:pt-BR: "Um aplicativo por linha, pelo nome ou executável, como iCloud ou iCloudHome.exe"
+    $description:zh-CN: "每行填写一个应用名称或可执行文件名，例如 iCloud 或 iCloudHome.exe"
+  $name: Sound
+  $name:ru-RU: Звук
+  $name:es-ES: Sonido
+  $name:de-DE: Sound
+  $name:pt-BR: Som
+  $name:zh-CN: 声音
 - quickSettings:
-  - shortcut1: display
-    $name: "Shortcut 1"
-    $name:ru-RU: "Переход 1"
-    $name:es-ES: "Acceso directo 1"
-    $name:de-DE: "Verknüpfung 1"
-    $name:pt-BR: "Atalho 1"
-    $name:zh-CN: "快捷方式 1"
+  - brightnessMode: auto
+    $name: Display brightness
+    $name:ru-RU: Яркость дисплея
+    $name:es-ES: Brillo de la pantalla
+    $name:de-DE: Anzeigehelligkeit
+    $name:pt-BR: Brilho da tela
+    $name:zh-CN: 显示亮度
+    $description: In Auto mode, the slider appears when brightness can be adjusted
+    $description:ru-RU: В режиме «Авто» ползунок виден, если яркость можно регулировать
+    $description:es-ES: En modo automático, el control se muestra si el brillo se puede ajustar
+    $description:de-DE: Im Modus Automatisch erscheint der Regler, wenn die Helligkeit einstellbar ist
+    $description:pt-BR: No modo automático, o controle aparece quando é possível ajustar o brilho
+    $description:zh-CN: 自动模式下，可调节亮度时显示滑块
     $options:
-    - none: "None"
-    - display: "Display settings"
-    - graphics: "Graphics"
-    - notifications: "Notifications"
-    - power: "Power"
-    - bluetooth: "Bluetooth & devices"
-    - network: "Network & internet"
-    - networkSettings: "Advanced network settings"
-    - apps: "Installed apps"
-    - update: "Windows Update"
+    - auto: Auto
+    - disabled: Disable
     $options:ru-RU:
-    - none: "Нет"
-    - display: "Параметры дисплея"
-    - graphics: "Графика"
-    - notifications: "Уведомления"
-    - power: "Питание"
-    - bluetooth: "Bluetooth и устройства"
-    - network: "Сеть и Интернет"
-    - networkSettings: "Сетевые параметры"
-    - apps: "Установленные приложения"
-    - update: "Центр обновления"
+    - auto: Авто
+    - disabled: Отключить
     $options:es-ES:
-    - none: "Ninguno"
-    - display: "Configuración de pantalla"
-    - graphics: "Gráficos"
-    - notifications: "Notificaciones"
-    - power: "Energía"
-    - bluetooth: "Bluetooth y dispositivos"
-    - network: "Red e Internet"
-    - networkSettings: "Configuración de red avanzada"
-    - apps: "Aplicaciones instaladas"
-    - update: "Windows Update"
+    - auto: Automático
+    - disabled: Desactivar
     $options:de-DE:
-    - none: "Keine"
-    - display: "Anzeigeeinstellungen"
-    - graphics: "Grafik"
-    - notifications: "Benachrichtigungen"
-    - power: "Strom"
-    - bluetooth: "Bluetooth und Geräte"
-    - network: "Netzwerk und Internet"
-    - networkSettings: "Erweiterte Netzwerkeinstellungen"
-    - apps: "Installierte Apps"
-    - update: "Windows Update"
+    - auto: Automatisch
+    - disabled: Deaktivieren
     $options:pt-BR:
-    - none: "Nenhum"
-    - display: "Configurações de exibição"
-    - graphics: "Elementos gráficos"
-    - notifications: "Notificações"
-    - power: "Energia"
-    - bluetooth: "Bluetooth e dispositivos"
-    - network: "Rede e Internet"
-    - networkSettings: "Configurações avançadas de rede"
-    - apps: "Aplicativos instalados"
-    - update: "Windows Update"
+    - auto: Automático
+    - disabled: Desativar
     $options:zh-CN:
-    - none: "无"
-    - display: "显示设置"
-    - graphics: "图形"
-    - notifications: "通知"
-    - power: "电源"
-    - bluetooth: "蓝牙和设备"
-    - network: "网络和 Internet"
-    - networkSettings: "高级网络设置"
-    - apps: "已安装的应用"
-    - update: "Windows 更新"
-  - shortcut2: none
-    $name: "Shortcut 2"
-    $name:ru-RU: "Переход 2"
-    $name:es-ES: "Acceso directo 2"
-    $name:de-DE: "Verknüpfung 2"
-    $name:pt-BR: "Atalho 2"
-    $name:zh-CN: "快捷方式 2"
+    - auto: 自动
+    - disabled: 禁用
+  - tileRows: "2"
+    $name: Rows of tiles
+    $name:ru-RU: Строки плиток
+    $name:es-ES: Filas de mosaicos
+    $name:de-DE: Kachelzeilen in den Schnelleinstellungen
+    $name:pt-BR: Linhas de blocos nas configurações rápidas
+    $name:zh-CN: 快速设置磁贴行数
+    $description: How many rows fit on each Quick Settings page
+    $description:ru-RU: Сколько строк помещается на одной странице быстрых настроек
+    $description:es-ES: Número de filas de mosaicos por página de Configuración rápida
+    $description:de-DE: Anzahl der Kachelzeilen pro Seite der Schnelleinstellungen
+    $description:pt-BR: Número de linhas por página das Configurações rápidas
+    $description:zh-CN: 每页快速设置显示的磁贴行数
     $options:
-    - none: "None"
-    - display: "Display settings"
-    - graphics: "Graphics"
-    - notifications: "Notifications"
-    - power: "Power"
-    - bluetooth: "Bluetooth & devices"
-    - network: "Network & internet"
-    - networkSettings: "Advanced network settings"
-    - apps: "Installed apps"
-    - update: "Windows Update"
-    $options:ru-RU:
-    - none: "Нет"
-    - display: "Параметры дисплея"
-    - graphics: "Графика"
-    - notifications: "Уведомления"
-    - power: "Питание"
-    - bluetooth: "Bluetooth и устройства"
-    - network: "Сеть и Интернет"
-    - networkSettings: "Сетевые параметры"
-    - apps: "Установленные приложения"
-    - update: "Центр обновления"
-    $options:es-ES:
-    - none: "Ninguno"
-    - display: "Configuración de pantalla"
-    - graphics: "Gráficos"
-    - notifications: "Notificaciones"
-    - power: "Energía"
-    - bluetooth: "Bluetooth y dispositivos"
-    - network: "Red e Internet"
-    - networkSettings: "Configuración de red avanzada"
-    - apps: "Aplicaciones instaladas"
-    - update: "Windows Update"
-    $options:de-DE:
-    - none: "Keine"
-    - display: "Anzeigeeinstellungen"
-    - graphics: "Grafik"
-    - notifications: "Benachrichtigungen"
-    - power: "Strom"
-    - bluetooth: "Bluetooth und Geräte"
-    - network: "Netzwerk und Internet"
-    - networkSettings: "Erweiterte Netzwerkeinstellungen"
-    - apps: "Installierte Apps"
-    - update: "Windows Update"
-    $options:pt-BR:
-    - none: "Nenhum"
-    - display: "Configurações de exibição"
-    - graphics: "Elementos gráficos"
-    - notifications: "Notificações"
-    - power: "Energia"
-    - bluetooth: "Bluetooth e dispositivos"
-    - network: "Rede e Internet"
-    - networkSettings: "Configurações avançadas de rede"
-    - apps: "Aplicativos instalados"
-    - update: "Windows Update"
-    $options:zh-CN:
-    - none: "无"
-    - display: "显示设置"
-    - graphics: "图形"
-    - notifications: "通知"
-    - power: "电源"
-    - bluetooth: "蓝牙和设备"
-    - network: "网络和 Internet"
-    - networkSettings: "高级网络设置"
-    - apps: "已安装的应用"
-    - update: "Windows 更新"
-  - shortcut3: none
-    $name: "Shortcut 3"
-    $name:ru-RU: "Переход 3"
-    $name:es-ES: "Acceso directo 3"
-    $name:de-DE: "Verknüpfung 3"
-    $name:pt-BR: "Atalho 3"
-    $name:zh-CN: "快捷方式 3"
+    - "1": "1"
+    - "2": "2"
+    - "3": "3"
+    - "4": "4"
+  - tileShape: default
+    $name: Tile shape
+    $name:ru-RU: Форма плиток
+    $name:es-ES: Forma de los mosaicos
+    $name:de-DE: Kachelform
+    $name:pt-BR: Forma dos blocos
+    $name:zh-CN: 磁贴形状
+    $description: In Pills mode, Quick Settings tiles have rounded outer edges
+    $description:ru-RU: В режиме «Капсулы» скругляются внешние края плиток быстрых настроек
+    $description:es-ES: En el modo Cápsulas se redondean los bordes exteriores de los mosaicos de Configuración rápida
+    $description:de-DE: Die Kapselform rundet die Außenkanten der Schnelleinstellungskacheln ab
+    $description:pt-BR: No modo Cápsulas, as bordas externas dos blocos das Configurações rápidas ficam arredondadas
+    $description:zh-CN: 选择胶囊形后，快速设置磁贴的外侧边缘会变圆
     $options:
-    - none: "None"
-    - display: "Display settings"
-    - graphics: "Graphics"
-    - notifications: "Notifications"
-    - power: "Power"
-    - bluetooth: "Bluetooth & devices"
-    - network: "Network & internet"
-    - networkSettings: "Advanced network settings"
-    - apps: "Installed apps"
-    - update: "Windows Update"
+    - default: Default
+    - pills: Pills
     $options:ru-RU:
-    - none: "Нет"
-    - display: "Параметры дисплея"
-    - graphics: "Графика"
-    - notifications: "Уведомления"
-    - power: "Питание"
-    - bluetooth: "Bluetooth и устройства"
-    - network: "Сеть и Интернет"
-    - networkSettings: "Сетевые параметры"
-    - apps: "Установленные приложения"
-    - update: "Центр обновления"
+    - default: По умолчанию
+    - pills: Капсулы
     $options:es-ES:
-    - none: "Ninguno"
-    - display: "Configuración de pantalla"
-    - graphics: "Gráficos"
-    - notifications: "Notificaciones"
-    - power: "Energía"
-    - bluetooth: "Bluetooth y dispositivos"
-    - network: "Red e Internet"
-    - networkSettings: "Configuración de red avanzada"
-    - apps: "Aplicaciones instaladas"
-    - update: "Windows Update"
+    - default: Predeterminada
+    - pills: Cápsulas
     $options:de-DE:
-    - none: "Keine"
-    - display: "Anzeigeeinstellungen"
-    - graphics: "Grafik"
-    - notifications: "Benachrichtigungen"
-    - power: "Strom"
-    - bluetooth: "Bluetooth und Geräte"
-    - network: "Netzwerk und Internet"
-    - networkSettings: "Erweiterte Netzwerkeinstellungen"
-    - apps: "Installierte Apps"
-    - update: "Windows Update"
+    - default: Standard
+    - pills: Kapselform
     $options:pt-BR:
-    - none: "Nenhum"
-    - display: "Configurações de exibição"
-    - graphics: "Elementos gráficos"
-    - notifications: "Notificações"
-    - power: "Energia"
-    - bluetooth: "Bluetooth e dispositivos"
-    - network: "Rede e Internet"
-    - networkSettings: "Configurações avançadas de rede"
-    - apps: "Aplicativos instalados"
-    - update: "Windows Update"
+    - default: Padrão
+    - pills: Cápsulas
     $options:zh-CN:
-    - none: "无"
-    - display: "显示设置"
-    - graphics: "图形"
-    - notifications: "通知"
-    - power: "电源"
-    - bluetooth: "蓝牙和设备"
-    - network: "网络和 Internet"
-    - networkSettings: "高级网络设置"
-    - apps: "已安装的应用"
-    - update: "Windows 更新"
-  - shortcut4: none
-    $name: "Shortcut 4"
-    $name:ru-RU: "Переход 4"
-    $name:es-ES: "Acceso directo 4"
-    $name:de-DE: "Verknüpfung 4"
-    $name:pt-BR: "Atalho 4"
-    $name:zh-CN: "快捷方式 4"
-    $options:
-    - none: "None"
-    - display: "Display settings"
-    - graphics: "Graphics"
-    - notifications: "Notifications"
-    - power: "Power"
-    - bluetooth: "Bluetooth & devices"
-    - network: "Network & internet"
-    - networkSettings: "Advanced network settings"
-    - apps: "Installed apps"
-    - update: "Windows Update"
-    $options:ru-RU:
-    - none: "Нет"
-    - display: "Параметры дисплея"
-    - graphics: "Графика"
-    - notifications: "Уведомления"
-    - power: "Питание"
-    - bluetooth: "Bluetooth и устройства"
-    - network: "Сеть и Интернет"
-    - networkSettings: "Сетевые параметры"
-    - apps: "Установленные приложения"
-    - update: "Центр обновления"
-    $options:es-ES:
-    - none: "Ninguno"
-    - display: "Configuración de pantalla"
-    - graphics: "Gráficos"
-    - notifications: "Notificaciones"
-    - power: "Energía"
-    - bluetooth: "Bluetooth y dispositivos"
-    - network: "Red e Internet"
-    - networkSettings: "Configuración de red avanzada"
-    - apps: "Aplicaciones instaladas"
-    - update: "Windows Update"
-    $options:de-DE:
-    - none: "Keine"
-    - display: "Anzeigeeinstellungen"
-    - graphics: "Grafik"
-    - notifications: "Benachrichtigungen"
-    - power: "Strom"
-    - bluetooth: "Bluetooth und Geräte"
-    - network: "Netzwerk und Internet"
-    - networkSettings: "Erweiterte Netzwerkeinstellungen"
-    - apps: "Installierte Apps"
-    - update: "Windows Update"
-    $options:pt-BR:
-    - none: "Nenhum"
-    - display: "Configurações de exibição"
-    - graphics: "Elementos gráficos"
-    - notifications: "Notificações"
-    - power: "Energia"
-    - bluetooth: "Bluetooth e dispositivos"
-    - network: "Rede e Internet"
-    - networkSettings: "Configurações avançadas de rede"
-    - apps: "Aplicativos instalados"
-    - update: "Windows Update"
-    $options:zh-CN:
-    - none: "无"
-    - display: "显示设置"
-    - graphics: "图形"
-    - notifications: "通知"
-    - power: "电源"
-    - bluetooth: "蓝牙和设备"
-    - network: "网络和 Internet"
-    - networkSettings: "高级网络设置"
-    - apps: "已安装的应用"
-    - update: "Windows 更新"
-  - shortcut5: none
-    $name: "Shortcut 5"
-    $name:ru-RU: "Переход 5"
-    $name:es-ES: "Acceso directo 5"
-    $name:de-DE: "Verknüpfung 5"
-    $name:pt-BR: "Atalho 5"
-    $name:zh-CN: "快捷方式 5"
-    $options:
-    - none: "None"
-    - display: "Display settings"
-    - graphics: "Graphics"
-    - notifications: "Notifications"
-    - power: "Power"
-    - bluetooth: "Bluetooth & devices"
-    - network: "Network & internet"
-    - networkSettings: "Advanced network settings"
-    - apps: "Installed apps"
-    - update: "Windows Update"
-    $options:ru-RU:
-    - none: "Нет"
-    - display: "Параметры дисплея"
-    - graphics: "Графика"
-    - notifications: "Уведомления"
-    - power: "Питание"
-    - bluetooth: "Bluetooth и устройства"
-    - network: "Сеть и Интернет"
-    - networkSettings: "Сетевые параметры"
-    - apps: "Установленные приложения"
-    - update: "Центр обновления"
-    $options:es-ES:
-    - none: "Ninguno"
-    - display: "Configuración de pantalla"
-    - graphics: "Gráficos"
-    - notifications: "Notificaciones"
-    - power: "Energía"
-    - bluetooth: "Bluetooth y dispositivos"
-    - network: "Red e Internet"
-    - networkSettings: "Configuración de red avanzada"
-    - apps: "Aplicaciones instaladas"
-    - update: "Windows Update"
-    $options:de-DE:
-    - none: "Keine"
-    - display: "Anzeigeeinstellungen"
-    - graphics: "Grafik"
-    - notifications: "Benachrichtigungen"
-    - power: "Strom"
-    - bluetooth: "Bluetooth und Geräte"
-    - network: "Netzwerk und Internet"
-    - networkSettings: "Erweiterte Netzwerkeinstellungen"
-    - apps: "Installierte Apps"
-    - update: "Windows Update"
-    $options:pt-BR:
-    - none: "Nenhum"
-    - display: "Configurações de exibição"
-    - graphics: "Elementos gráficos"
-    - notifications: "Notificações"
-    - power: "Energia"
-    - bluetooth: "Bluetooth e dispositivos"
-    - network: "Rede e Internet"
-    - networkSettings: "Configurações avançadas de rede"
-    - apps: "Aplicativos instalados"
-    - update: "Windows Update"
-    $options:zh-CN:
-    - none: "无"
-    - display: "显示设置"
-    - graphics: "图形"
-    - notifications: "通知"
-    - power: "电源"
-    - bluetooth: "蓝牙和设备"
-    - network: "网络和 Internet"
-    - networkSettings: "高级网络设置"
-    - apps: "已安装的应用"
-    - update: "Windows 更新"
-  $name: "Additional shortcuts"
-  $name:ru-RU: "Дополнительные переходы"
-  $name:es-ES: "Accesos directos adicionales"
-  $name:de-DE: "Weitere Verknüpfungen"
-  $name:pt-BR: "Atalhos adicionais"
-  $name:zh-CN: "其他快捷方式"
-  $description: Shortcuts to the right of Settings, in the selected order, skipping empty slots and duplicates
-  $description:ru-RU: Порядок кнопок справа от «Настроек», пустые позиции и повторы пропускаются
-  $description:es-ES: Accesos a la derecha de Configuración, en el orden elegido y sin huecos ni duplicados
-  $description:de-DE: Verknüpfungen rechts neben Einstellungen in der gewählten Reihenfolge, ohne Lücken oder Duplikate
-  $description:pt-BR: Atalhos à direita de Configurações, na ordem escolhida, sem lacunas nem duplicatas
-  $description:zh-CN: 快捷方式按所选顺序显示在“设置”右侧，跳过空位及重复项
+    - default: 默认
+    - pills: 胶囊形
+  - additionalShortcuts:
+    - shortcut1: display
+      $name: "Shortcut 1"
+      $name:ru-RU: "Переход 1"
+      $name:es-ES: "Acceso directo 1"
+      $name:de-DE: "Verknüpfung 1"
+      $name:pt-BR: "Atalho 1"
+      $name:zh-CN: "快捷方式 1"
+      $options:
+      - none: "None"
+      - display: "Display settings"
+      - graphics: "Graphics"
+      - notifications: "Notifications"
+      - power: "Power"
+      - bluetooth: "Bluetooth & devices"
+      - network: "Network & internet"
+      - networkSettings: "Advanced network settings"
+      - apps: "Installed apps"
+      - update: "Windows Update"
+      $options:ru-RU:
+      - none: "Нет"
+      - display: "Параметры дисплея"
+      - graphics: "Графика"
+      - notifications: "Уведомления"
+      - power: "Питание"
+      - bluetooth: "Bluetooth и устройства"
+      - network: "Сеть и Интернет"
+      - networkSettings: "Сетевые параметры"
+      - apps: "Установленные приложения"
+      - update: "Центр обновления"
+      $options:es-ES:
+      - none: "Ninguno"
+      - display: "Configuración de pantalla"
+      - graphics: "Gráficos"
+      - notifications: "Notificaciones"
+      - power: "Energía"
+      - bluetooth: "Bluetooth y dispositivos"
+      - network: "Red e Internet"
+      - networkSettings: "Configuración de red avanzada"
+      - apps: "Aplicaciones instaladas"
+      - update: "Windows Update"
+      $options:de-DE:
+      - none: "Keine"
+      - display: "Anzeigeeinstellungen"
+      - graphics: "Grafik"
+      - notifications: "Benachrichtigungen"
+      - power: "Strom"
+      - bluetooth: "Bluetooth und Geräte"
+      - network: "Netzwerk und Internet"
+      - networkSettings: "Erweiterte Netzwerkeinstellungen"
+      - apps: "Installierte Apps"
+      - update: "Windows Update"
+      $options:pt-BR:
+      - none: "Nenhum"
+      - display: "Configurações de exibição"
+      - graphics: "Elementos gráficos"
+      - notifications: "Notificações"
+      - power: "Energia"
+      - bluetooth: "Bluetooth e dispositivos"
+      - network: "Rede e Internet"
+      - networkSettings: "Configurações avançadas de rede"
+      - apps: "Aplicativos instalados"
+      - update: "Windows Update"
+      $options:zh-CN:
+      - none: "无"
+      - display: "显示设置"
+      - graphics: "图形"
+      - notifications: "通知"
+      - power: "电源"
+      - bluetooth: "蓝牙和设备"
+      - network: "网络和 Internet"
+      - networkSettings: "高级网络设置"
+      - apps: "已安装的应用"
+      - update: "Windows 更新"
+    - shortcut2: none
+      $name: "Shortcut 2"
+      $name:ru-RU: "Переход 2"
+      $name:es-ES: "Acceso directo 2"
+      $name:de-DE: "Verknüpfung 2"
+      $name:pt-BR: "Atalho 2"
+      $name:zh-CN: "快捷方式 2"
+      $options:
+      - none: "None"
+      - display: "Display settings"
+      - graphics: "Graphics"
+      - notifications: "Notifications"
+      - power: "Power"
+      - bluetooth: "Bluetooth & devices"
+      - network: "Network & internet"
+      - networkSettings: "Advanced network settings"
+      - apps: "Installed apps"
+      - update: "Windows Update"
+      $options:ru-RU:
+      - none: "Нет"
+      - display: "Параметры дисплея"
+      - graphics: "Графика"
+      - notifications: "Уведомления"
+      - power: "Питание"
+      - bluetooth: "Bluetooth и устройства"
+      - network: "Сеть и Интернет"
+      - networkSettings: "Сетевые параметры"
+      - apps: "Установленные приложения"
+      - update: "Центр обновления"
+      $options:es-ES:
+      - none: "Ninguno"
+      - display: "Configuración de pantalla"
+      - graphics: "Gráficos"
+      - notifications: "Notificaciones"
+      - power: "Energía"
+      - bluetooth: "Bluetooth y dispositivos"
+      - network: "Red e Internet"
+      - networkSettings: "Configuración de red avanzada"
+      - apps: "Aplicaciones instaladas"
+      - update: "Windows Update"
+      $options:de-DE:
+      - none: "Keine"
+      - display: "Anzeigeeinstellungen"
+      - graphics: "Grafik"
+      - notifications: "Benachrichtigungen"
+      - power: "Strom"
+      - bluetooth: "Bluetooth und Geräte"
+      - network: "Netzwerk und Internet"
+      - networkSettings: "Erweiterte Netzwerkeinstellungen"
+      - apps: "Installierte Apps"
+      - update: "Windows Update"
+      $options:pt-BR:
+      - none: "Nenhum"
+      - display: "Configurações de exibição"
+      - graphics: "Elementos gráficos"
+      - notifications: "Notificações"
+      - power: "Energia"
+      - bluetooth: "Bluetooth e dispositivos"
+      - network: "Rede e Internet"
+      - networkSettings: "Configurações avançadas de rede"
+      - apps: "Aplicativos instalados"
+      - update: "Windows Update"
+      $options:zh-CN:
+      - none: "无"
+      - display: "显示设置"
+      - graphics: "图形"
+      - notifications: "通知"
+      - power: "电源"
+      - bluetooth: "蓝牙和设备"
+      - network: "网络和 Internet"
+      - networkSettings: "高级网络设置"
+      - apps: "已安装的应用"
+      - update: "Windows 更新"
+    - shortcut3: none
+      $name: "Shortcut 3"
+      $name:ru-RU: "Переход 3"
+      $name:es-ES: "Acceso directo 3"
+      $name:de-DE: "Verknüpfung 3"
+      $name:pt-BR: "Atalho 3"
+      $name:zh-CN: "快捷方式 3"
+      $options:
+      - none: "None"
+      - display: "Display settings"
+      - graphics: "Graphics"
+      - notifications: "Notifications"
+      - power: "Power"
+      - bluetooth: "Bluetooth & devices"
+      - network: "Network & internet"
+      - networkSettings: "Advanced network settings"
+      - apps: "Installed apps"
+      - update: "Windows Update"
+      $options:ru-RU:
+      - none: "Нет"
+      - display: "Параметры дисплея"
+      - graphics: "Графика"
+      - notifications: "Уведомления"
+      - power: "Питание"
+      - bluetooth: "Bluetooth и устройства"
+      - network: "Сеть и Интернет"
+      - networkSettings: "Сетевые параметры"
+      - apps: "Установленные приложения"
+      - update: "Центр обновления"
+      $options:es-ES:
+      - none: "Ninguno"
+      - display: "Configuración de pantalla"
+      - graphics: "Gráficos"
+      - notifications: "Notificaciones"
+      - power: "Energía"
+      - bluetooth: "Bluetooth y dispositivos"
+      - network: "Red e Internet"
+      - networkSettings: "Configuración de red avanzada"
+      - apps: "Aplicaciones instaladas"
+      - update: "Windows Update"
+      $options:de-DE:
+      - none: "Keine"
+      - display: "Anzeigeeinstellungen"
+      - graphics: "Grafik"
+      - notifications: "Benachrichtigungen"
+      - power: "Strom"
+      - bluetooth: "Bluetooth und Geräte"
+      - network: "Netzwerk und Internet"
+      - networkSettings: "Erweiterte Netzwerkeinstellungen"
+      - apps: "Installierte Apps"
+      - update: "Windows Update"
+      $options:pt-BR:
+      - none: "Nenhum"
+      - display: "Configurações de exibição"
+      - graphics: "Elementos gráficos"
+      - notifications: "Notificações"
+      - power: "Energia"
+      - bluetooth: "Bluetooth e dispositivos"
+      - network: "Rede e Internet"
+      - networkSettings: "Configurações avançadas de rede"
+      - apps: "Aplicativos instalados"
+      - update: "Windows Update"
+      $options:zh-CN:
+      - none: "无"
+      - display: "显示设置"
+      - graphics: "图形"
+      - notifications: "通知"
+      - power: "电源"
+      - bluetooth: "蓝牙和设备"
+      - network: "网络和 Internet"
+      - networkSettings: "高级网络设置"
+      - apps: "已安装的应用"
+      - update: "Windows 更新"
+    - shortcut4: none
+      $name: "Shortcut 4"
+      $name:ru-RU: "Переход 4"
+      $name:es-ES: "Acceso directo 4"
+      $name:de-DE: "Verknüpfung 4"
+      $name:pt-BR: "Atalho 4"
+      $name:zh-CN: "快捷方式 4"
+      $options:
+      - none: "None"
+      - display: "Display settings"
+      - graphics: "Graphics"
+      - notifications: "Notifications"
+      - power: "Power"
+      - bluetooth: "Bluetooth & devices"
+      - network: "Network & internet"
+      - networkSettings: "Advanced network settings"
+      - apps: "Installed apps"
+      - update: "Windows Update"
+      $options:ru-RU:
+      - none: "Нет"
+      - display: "Параметры дисплея"
+      - graphics: "Графика"
+      - notifications: "Уведомления"
+      - power: "Питание"
+      - bluetooth: "Bluetooth и устройства"
+      - network: "Сеть и Интернет"
+      - networkSettings: "Сетевые параметры"
+      - apps: "Установленные приложения"
+      - update: "Центр обновления"
+      $options:es-ES:
+      - none: "Ninguno"
+      - display: "Configuración de pantalla"
+      - graphics: "Gráficos"
+      - notifications: "Notificaciones"
+      - power: "Energía"
+      - bluetooth: "Bluetooth y dispositivos"
+      - network: "Red e Internet"
+      - networkSettings: "Configuración de red avanzada"
+      - apps: "Aplicaciones instaladas"
+      - update: "Windows Update"
+      $options:de-DE:
+      - none: "Keine"
+      - display: "Anzeigeeinstellungen"
+      - graphics: "Grafik"
+      - notifications: "Benachrichtigungen"
+      - power: "Strom"
+      - bluetooth: "Bluetooth und Geräte"
+      - network: "Netzwerk und Internet"
+      - networkSettings: "Erweiterte Netzwerkeinstellungen"
+      - apps: "Installierte Apps"
+      - update: "Windows Update"
+      $options:pt-BR:
+      - none: "Nenhum"
+      - display: "Configurações de exibição"
+      - graphics: "Elementos gráficos"
+      - notifications: "Notificações"
+      - power: "Energia"
+      - bluetooth: "Bluetooth e dispositivos"
+      - network: "Rede e Internet"
+      - networkSettings: "Configurações avançadas de rede"
+      - apps: "Aplicativos instalados"
+      - update: "Windows Update"
+      $options:zh-CN:
+      - none: "无"
+      - display: "显示设置"
+      - graphics: "图形"
+      - notifications: "通知"
+      - power: "电源"
+      - bluetooth: "蓝牙和设备"
+      - network: "网络和 Internet"
+      - networkSettings: "高级网络设置"
+      - apps: "已安装的应用"
+      - update: "Windows 更新"
+    - shortcut5: none
+      $name: "Shortcut 5"
+      $name:ru-RU: "Переход 5"
+      $name:es-ES: "Acceso directo 5"
+      $name:de-DE: "Verknüpfung 5"
+      $name:pt-BR: "Atalho 5"
+      $name:zh-CN: "快捷方式 5"
+      $options:
+      - none: "None"
+      - display: "Display settings"
+      - graphics: "Graphics"
+      - notifications: "Notifications"
+      - power: "Power"
+      - bluetooth: "Bluetooth & devices"
+      - network: "Network & internet"
+      - networkSettings: "Advanced network settings"
+      - apps: "Installed apps"
+      - update: "Windows Update"
+      $options:ru-RU:
+      - none: "Нет"
+      - display: "Параметры дисплея"
+      - graphics: "Графика"
+      - notifications: "Уведомления"
+      - power: "Питание"
+      - bluetooth: "Bluetooth и устройства"
+      - network: "Сеть и Интернет"
+      - networkSettings: "Сетевые параметры"
+      - apps: "Установленные приложения"
+      - update: "Центр обновления"
+      $options:es-ES:
+      - none: "Ninguno"
+      - display: "Configuración de pantalla"
+      - graphics: "Gráficos"
+      - notifications: "Notificaciones"
+      - power: "Energía"
+      - bluetooth: "Bluetooth y dispositivos"
+      - network: "Red e Internet"
+      - networkSettings: "Configuración de red avanzada"
+      - apps: "Aplicaciones instaladas"
+      - update: "Windows Update"
+      $options:de-DE:
+      - none: "Keine"
+      - display: "Anzeigeeinstellungen"
+      - graphics: "Grafik"
+      - notifications: "Benachrichtigungen"
+      - power: "Strom"
+      - bluetooth: "Bluetooth und Geräte"
+      - network: "Netzwerk und Internet"
+      - networkSettings: "Erweiterte Netzwerkeinstellungen"
+      - apps: "Installierte Apps"
+      - update: "Windows Update"
+      $options:pt-BR:
+      - none: "Nenhum"
+      - display: "Configurações de exibição"
+      - graphics: "Elementos gráficos"
+      - notifications: "Notificações"
+      - power: "Energia"
+      - bluetooth: "Bluetooth e dispositivos"
+      - network: "Rede e Internet"
+      - networkSettings: "Configurações avançadas de rede"
+      - apps: "Aplicativos instalados"
+      - update: "Windows Update"
+      $options:zh-CN:
+      - none: "无"
+      - display: "显示设置"
+      - graphics: "图形"
+      - notifications: "通知"
+      - power: "电源"
+      - bluetooth: "蓝牙和设备"
+      - network: "网络和 Internet"
+      - networkSettings: "高级网络设置"
+      - apps: "已安装的应用"
+      - update: "Windows 更新"
+    $name: "Additional shortcuts"
+    $name:ru-RU: "Дополнительные переходы"
+    $name:es-ES: "Accesos directos adicionales"
+    $name:de-DE: "Weitere Verknüpfungen"
+    $name:pt-BR: "Atalhos adicionais"
+    $name:zh-CN: "其他快捷方式"
+    $description: Shortcuts to the right of Settings, in the selected order, skipping empty slots and duplicates
+    $description:ru-RU: Порядок кнопок справа от «Настроек», пустые позиции и повторы пропускаются
+    $description:es-ES: Accesos a la derecha de Configuración, en el orden elegido y sin huecos ni duplicados
+    $description:de-DE: Verknüpfungen rechts neben Einstellungen in der gewählten Reihenfolge, ohne Lücken oder Duplikate
+    $description:pt-BR: Atalhos à direita de Configurações, na ordem escolhida, sem lacunas nem duplicatas
+    $description:zh-CN: 快捷方式按所选顺序显示在“设置”右侧，跳过空位及重复项
+  $name: Quick Settings
+  $name:ru-RU: Быстрые настройки
+  $name:es-ES: Configuración rápida
+  $name:de-DE: Schnelleinstellungen
+  $name:pt-BR: Configurações rápidas
+  $name:zh-CN: 快速设置
 - alternativeIcons:
   - mixer:
     - quick: true
@@ -742,19 +891,6 @@ in this source file.
   $description:de-DE: "Ein ausgeschalteter Schalter verwendet dort das Windows-Symbol"
   $description:pt-BR: "Ao desativar uma opção, o ícone do Windows aparece nesse local"
   $description:zh-CN: "关闭开关后，相应位置将使用 Windows 图标"
-- hiddenApplications: [""]
-  $name: "Hide from the volume mixer"
-  $name:ru-RU: "Скрыть в микшере громкости"
-  $name:es-ES: "Ocultar en el mezclador de volumen"
-  $name:de-DE: "Im Lautstärkemixer ausblenden"
-  $name:pt-BR: "Ocultar no mixer de volume"
-  $name:zh-CN: "在音量合成器中隐藏"
-  $description: "One app per row, by name or executable, for example iCloud or iCloudHome.exe"
-  $description:ru-RU: "По одному названию или имени файла на строку, например iCloud или iCloudHome.exe"
-  $description:es-ES: "Una aplicación por fila, por nombre o archivo ejecutable, por ejemplo, iCloud o iCloudHome.exe"
-  $description:de-DE: "Eine App pro Zeile anhand ihres Namens oder ihrer ausführbaren Datei, etwa iCloud oder iCloudHome.exe"
-  $description:pt-BR: "Um aplicativo por linha, pelo nome ou executável, como iCloud ou iCloudHome.exe"
-  $description:zh-CN: "每行填写一个应用名称或可执行文件名，例如 iCloud 或 iCloudHome.exe"
 */
 // ==/WindhawkModSettings==
 
@@ -808,6 +944,7 @@ in this source file.
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cwctype>
 #include <cstdint>
@@ -867,18 +1004,6 @@ inline void AddHiddenApp(std::vector<std::wstring> &apps, std::wstring_view name
   if (first != name.npos)
     apps.push_back(Lower(std::wstring(name.substr(first, name.find_last_not_of(L" \t\r\n") - first + 1))));
 }
-inline std::vector<std::wstring> ParseHidden(std::wstring const &text) {
-  std::vector<std::wstring> result;
-  size_t start = 0;
-  while (start < text.size()) {
-    auto end = text.find_first_of(L";,\r\n", start);
-    if (end == text.npos)
-      end = text.size();
-    AddHiddenApp(result, std::wstring_view(text).substr(start, end - start));
-    start = end + 1;
-  }
-  return result;
-}
 inline int VolumeWheelStep(int value) {
   return value >= 1 && value <= 100 ? value : 2;
 }
@@ -900,6 +1025,9 @@ inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const
                      [&](auto const &p) { return text.find(p) != text.npos; });
 }
 inline float Clamp(float value) { return std::clamp(value, 0.f, 1.f); }
+inline double EndpointVolumePercent(float value, bool muted) {
+  return muted ? 0 : std::round(Clamp(value) * 100);
+}
 inline int VolumeIcon(float value, bool mute) {
   return mute ? -1 : value <= 0 ? 0 : value <= .33f ? 1 : value <= .66f ? 2 : 3;
 }
@@ -924,10 +1052,63 @@ struct Snapshot {
   std::wstring outputId, inputId, error;
   float master = 0;
   bool muted = false, masterAvailable = false;
+  float inputVolume = 0;
+  bool inputVolumeAvailable = false, inputMuteAvailable = false, inputMuted = false;
   unsigned long long revision = 0;
   unsigned long long applied = 0;
 };
-enum class Action { MasterVolume, MasterMute, ToggleEndpointMute, Input, Refresh };
+enum class InputVolumeProbe { Idle, Poll, Failed };
+inline bool UnsupportedInputVolume(HRESULT result) {
+  return result == E_NOINTERFACE || result == E_NOTIMPL ||
+         result == HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+}
+class InputVolumeRetry {
+  unsigned failures_ = 0;
+
+public:
+  std::chrono::seconds Delay(InputVolumeProbe probe) {
+    if (probe == InputVolumeProbe::Failed) {
+      auto delay = std::chrono::seconds{1 << failures_};
+      failures_ = std::min(failures_ + 1, 3u);
+      return delay;
+    }
+    failures_ = 0;
+    return std::chrono::seconds{probe == InputVolumeProbe::Poll ? 1 : 0};
+  }
+};
+enum class SystemVolumeRight { SoundSettings, Percentage, DeviceSettings };
+struct SoundOptions {
+  bool microphoneAuto = false, microphoneDeviceSettings = false, spatialSound = true;
+  SystemVolumeRight systemVolumeRight = SystemVolumeRight::SoundSettings;
+  bool SettingsInHeader() const { return systemVolumeRight != SystemVolumeRight::SoundSettings; }
+  bool operator==(SoundOptions const &) const = default;
+};
+inline SoundOptions ParseSoundOptions(std::wstring_view microphone, std::wstring_view microphoneRight,
+                                      std::wstring_view systemRight, std::wstring_view spatial) {
+  SoundOptions options;
+  options.microphoneAuto = microphone == L"auto";
+  options.microphoneDeviceSettings = microphoneRight == L"deviceSettings";
+  options.spatialSound = spatial != L"disabled";
+  if (systemRight == L"percentage")
+    options.systemVolumeRight = SystemVolumeRight::Percentage;
+  else if (systemRight == L"deviceSettings")
+    options.systemVolumeRight = SystemVolumeRight::DeviceSettings;
+  return options;
+}
+inline bool ShowMicrophoneRow(SoundOptions options, Snapshot const &state) {
+  return options.microphoneAuto && !state.inputId.empty() && state.inputVolumeAvailable;
+}
+inline bool CanResetVolume(double value, bool showMuteAtZero = false) {
+  return value >= 0 && value < 100 && (value > 0 || !showMuteAtZero);
+}
+inline std::wstring AudioDevicePropertiesUri(std::wstring_view id) {
+  if (id.empty())
+    return {};
+  return std::wstring(L"ms-settings:sound-properties?endpointId=").append(id);
+}
+enum class Action {
+  MasterVolume, MasterMute, ToggleEndpointMute, Input, InputVolume, InputMute, Refresh
+};
 struct Command {
   Action action = Action::Refresh;
   std::wstring id;
@@ -1029,14 +1210,25 @@ class Audio final {
     std::mutex mutex;
     std::condition_variable cv;
     bool changed = true;
+    void Signal() {
+      std::lock_guard lock(mutex);
+      changed = true;
+      cv.notify_one();
+    }
+  };
+  struct InputVolumeNotify : winrt::implements<InputVolumeNotify, IAudioEndpointVolumeCallback> {
+    std::shared_ptr<Wake> wake;
+    explicit InputVolumeNotify(std::shared_ptr<Wake> value) : wake(std::move(value)) {}
+    HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA) noexcept override {
+      wake->Signal();
+      return S_OK;
+    }
   };
   struct Notify : winrt::implements<Notify, IMMNotificationClient> {
     std::shared_ptr<Wake> wake;
     explicit Notify(std::shared_ptr<Wake> value) : wake(std::move(value)) {}
     void Signal() {
-      std::lock_guard lock(wake->mutex);
-      wake->changed = true;
-      wake->cv.notify_one();
+      wake->Signal();
     }
     HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(EDataFlow, ERole, LPCWSTR) override {
       Signal();
@@ -1084,6 +1276,12 @@ class Audio final {
   std::function<void()> publish_;
   winrt::com_ptr<IMMDeviceEnumerator> enumerator_;
   winrt::com_ptr<IAudioEndpointVolume> master_;
+  winrt::com_ptr<IAudioEndpointVolume> inputVolume_;
+  winrt::com_ptr<InputVolumeNotify> inputVolumeObserver_;
+  std::atomic<bool> inputVolumeEnabled_{false};
+  std::wstring inputVolumeId_;
+  bool inputVolumeRejected_ = false;
+  InputVolumeRetry inputVolumeRetry_;
   std::shared_ptr<VolumeFeed> volumeFeed_ = std::make_shared<VolumeFeed>();
   winrt::com_ptr<VolumeNotify> volumeObserver_;
   std::map<std::wstring, SavedVolume> masters_;
@@ -1206,6 +1404,80 @@ class Audio final {
       ++completed;
     }
   }
+  void UnbindInputVolume() {
+    if (inputVolume_ && inputVolumeObserver_)
+      inputVolume_->UnregisterControlChangeNotify(inputVolumeObserver_.get());
+    inputVolumeObserver_ = nullptr;
+    inputVolume_ = nullptr;
+  }
+  InputVolumeProbe FailedInputVolumeRead(HRESULT result) {
+    UnbindInputVolume();
+    inputVolumeRejected_ = UnsupportedInputVolume(result);
+    return inputVolumeRejected_ ? InputVolumeProbe::Idle : InputVolumeProbe::Failed;
+  }
+  InputVolumeProbe ReadInputVolume(Snapshot &state) {
+    auto id = inputVolumeEnabled_ ? state.inputId : std::wstring{};
+    if (id != inputVolumeId_) {
+      UnbindInputVolume();
+      inputVolumeId_ = id;
+      inputVolumeRejected_ = false;
+      inputVolumeRetry_ = {};
+    }
+    if (id.empty() || inputVolumeRejected_) {
+      UnbindInputVolume();
+      return InputVolumeProbe::Idle;
+    }
+    if (!inputVolume_) {
+      winrt::com_ptr<IMMDevice> device;
+      if (FAILED(enumerator_->GetDevice(id.c_str(), device.put())) || !device)
+        return InputVolumeProbe::Failed;
+      auto result = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_INPROC_SERVER, nullptr,
+                                     inputVolume_.put_void());
+      if (FAILED(result))
+        return FailedInputVolumeRead(result);
+      if (!inputVolume_)
+        return InputVolumeProbe::Failed;
+      inputVolumeObserver_ = winrt::make_self<InputVolumeNotify>(wake_);
+      if (FAILED(inputVolume_->RegisterControlChangeNotify(inputVolumeObserver_.get())))
+        inputVolumeObserver_ = nullptr;
+    }
+    auto result = inputVolume_->GetMasterVolumeLevelScalar(&state.inputVolume);
+    if (FAILED(result) || !std::isfinite(state.inputVolume))
+      return FailedInputVolumeRead(result);
+    float low, high, step;
+    // Software endpoint volume also works for virtual devices. A fixed range
+    // means the device offers no adjustment, regardless of its form factor.
+    state.inputVolumeAvailable =
+        FAILED(inputVolume_->GetVolumeRange(&low, &high, &step)) || high > low;
+    BOOL muted = FALSE;
+    state.inputMuteAvailable = SUCCEEDED(inputVolume_->GetMute(&muted));
+    state.inputMuted = muted;
+    return state.inputVolumeAvailable && !inputVolumeObserver_ ? InputVolumeProbe::Poll
+                                                              : InputVolumeProbe::Idle;
+  }
+  void SetInputVolume(Command const &cmd, float value) {
+    // A queued drag or click can outlive a default device change. Keep both
+    // operations tied to the endpoint that was visible when the event fired.
+    if (!inputVolumeEnabled_ || !inputVolume_ || cmd.id != inputVolumeId_ ||
+        cmd.id != DefaultDevice(eCapture))
+      return;
+    BOOL muted = FALSE;
+    if (cmd.action == Action::InputMute) {
+      winrt::check_hresult(inputVolume_->GetMute(&muted));
+      winrt::check_hresult(inputVolume_->SetMute(!muted, nullptr));
+      return;
+    }
+    bool canMute = SUCCEEDED(inputVolume_->GetMute(&muted));
+    // Keep the last gain when muting at zero, if the endpoint supports mute.
+    if (value <= 0 && canMute && SUCCEEDED(inputVolume_->SetMute(TRUE, nullptr)))
+      return;
+    auto result = inputVolume_->SetMasterVolumeLevelScalar(value, nullptr);
+    if (UnsupportedInputVolume(result))
+      inputVolumeRejected_ = true;
+    winrt::check_hresult(result);
+    if (value > 0 && canMute && muted)
+      winrt::check_hresult(inputVolume_->SetMute(FALSE, nullptr));
+  }
   void Execute(Command const &cmd) {
     error_.clear();
     auto value = Clamp(cmd.value);
@@ -1228,6 +1500,8 @@ class Audio final {
         value = saved.Toggle(before, muted);
       winrt::check_hresult(master_->SetMasterVolumeLevelScalar(value, nullptr));
       winrt::check_hresult(master_->SetMute(value <= 0, nullptr));
+    } else if (cmd.action == Action::InputVolume || cmd.action == Action::InputMute) {
+      SetInputVolume(cmd, value);
     } else if (cmd.action == Action::Input) {
       winrt::com_ptr<IMMDevice> target;
       winrt::check_hresult(enumerator_->GetDevice(cmd.id.c_str(), target.put()));
@@ -1243,7 +1517,7 @@ class Audio final {
       SetDefault(cmd.id);
     }
   }
-  bool Read() {
+  std::chrono::seconds Read() {
     Snapshot state;
     state.revision = ++revision_;
     state.applied = applied_;
@@ -1270,12 +1544,14 @@ class Audio final {
     bool retry = !state.outputId.empty() && !state.masterAvailable;
     // The input list and the endpoint volume have independent failure modes.
     // Publish the current volume even if an endpoint collection is unavailable.
+    bool inputIdKnown = false;
     for (auto flow : {eRender, eCapture})
       try {
         if (flow == eRender)
           state.output = Devices(flow, state.outputId);
         else {
           state.inputId = DefaultDevice(flow);
+          inputIdKnown = true;
           state.input = Devices(flow, state.inputId);
         }
       } catch (winrt::hresult_error const &) {
@@ -1284,10 +1560,15 @@ class Audio final {
         if (flow == eRender && snapshot_.outputId == state.outputId)
           state.output = snapshot_.output;
         else if (flow == eCapture) {
-          state.inputId = snapshot_.inputId;
-          state.input = snapshot_.input;
+          if (!inputIdKnown)
+            state.inputId = snapshot_.inputId;
+          if (snapshot_.inputId == state.inputId)
+            state.input = snapshot_.input;
         }
       }
+    auto inputProbe = inputIdKnown || !inputVolumeEnabled_ ? ReadInputVolume(state)
+                                                         : InputVolumeProbe::Idle;
+    auto inputDelay = inputVolumeRetry_.Delay(inputProbe);
     // The shell's own lists serve output devices, application sessions and
     // spatial sound; this worker serves the added input selector, the master
     // volume and the tray.
@@ -1297,7 +1578,7 @@ class Audio final {
     }
     if (publish_)
       publish_();
-    return retry;
+    return retry ? std::chrono::seconds{1} : inputDelay;
   }
   void Run() noexcept {
     bool apartment = false;
@@ -1325,9 +1606,9 @@ class Audio final {
           }
           applied_ = cmd.serial;
         }
-        bool retry = true;
+        auto retryAfter = std::chrono::seconds{1};
         try {
-          retry = Read();
+          retryAfter = Read();
         } catch (winrt::hresult_error const &ex) {
           {
             std::lock_guard lock(mutex_);
@@ -1342,8 +1623,8 @@ class Audio final {
         auto signalled = [&] { return stop_ || wake_->changed; };
         // Failed reads and endpoint activation may have no notification to
         // wake the worker again. Retry only until the audio state recovers.
-        if (retry)
-          wake_->cv.wait_for(lock, std::chrono::seconds(1), signalled);
+        if (retryAfter.count())
+          wake_->cv.wait_for(lock, retryAfter, signalled);
         else
           wake_->cv.wait(lock, signalled);
         wake_->changed = false;
@@ -1369,6 +1650,8 @@ class Audio final {
       master_->UnregisterControlChangeNotify(volumeObserver_.get());
     volumeObserver_ = nullptr;
     master_ = nullptr;
+    UnbindInputVolume();
+    inputVolumeId_.clear();
     enumerator_ = nullptr;
     if (apartment)
       winrt::uninit_apartment();
@@ -1379,7 +1662,7 @@ public:
   Audio(Audio const &) = delete;
   Audio &operator=(Audio const &) = delete;
   ~Audio() { Stop(); }
-  void Start(std::function<void()> publish) {
+  void Start(std::function<void()> publish, bool inputVolumeEnabled = false) {
     publish_ = std::move(publish);
     {
       std::lock_guard lock(volumeFeed_->mutex);
@@ -1387,6 +1670,7 @@ public:
       volumeFeed_->active = true;
     }
     stop_ = false;
+    inputVolumeEnabled_ = inputVolumeEnabled;
     worker_ = std::thread([this] { Run(); });
   }
   void Stop() {
@@ -1413,12 +1697,12 @@ public:
       std::lock_guard lock(mutex_);
       commands_.push_back(std::move(command));
     }
-    {
-      std::lock_guard lock(wake_->mutex);
-      wake_->changed = true;
-    }
-    wake_->cv.notify_one();
+    wake_->Signal();
     return serial;
+  }
+  void EnableInputVolume(bool enabled) {
+    inputVolumeEnabled_ = enabled;
+    wake_->Signal();
   }
   Snapshot Get() {
     Snapshot state;
@@ -1442,11 +1726,18 @@ public:
 } // namespace sound
 
 
-// Lucide ISC assets: the mixer settings glyph and ethernet-port for the
-// taskbar network icon; all other glyphs are system Segoe Fluent Icons via
-// SymbolGlyph().
+// Lucide ISC assets are used for the mixer and the taskbar Ethernet icon.
+// The two vertical sliders are shared by the Sound device settings buttons.
 namespace sound {
 inline PCWSTR IconMarkup(std::wstring_view name) {
+  if (name == L"device-settings")
+    return LR"icon(
+<Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2"
+      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+      Data="M7 3V5 M7 11V21 M17 3V13 M17 19V21
+            M7 6 A2 2 0 1 1 7 10 A2 2 0 1 1 7 6 Z
+            M17 14 A2 2 0 1 1 17 18 A2 2 0 1 1 17 14 Z"/>
+)icon";
   if (name == L"sliders-horizontal")
     return LR"icon(<Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M10 5H3"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M12 19H3"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M14 3v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M16 17v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 12h-9"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 19h-5"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 5h-7"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M8 10v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M8 12H3"/>)icon";
   return L"";
@@ -1498,10 +1789,18 @@ namespace P = C::Primitives;
 namespace M = X::Media;
 namespace D = X::Data;
 using winrt::Windows::Foundation::IInspectable;
+// Windhawk skips its default online cache for local mods. Use the catalog
+// cache for this mod explicitly, with Windhawk still matching the DLL's PDB ID.
+inline constexpr WH_HOOK_SYMBOLS_OPTIONS shellSymbolOptions{
+    .optionsSize = sizeof(WH_HOOK_SYMBOLS_OPTIONS),
+    .onlineCacheUrl = L"https://ramensoftware.github.io/windhawk-mod-symbol-cache/"
+                      L"refined-quick-settings-and-sound/",
+};
 inline std::atomic<bool> stopping = false;
 inline HMODULE module = nullptr;
 struct ModSettings {
   std::vector<std::wstring> hidden;
+  sound::SoundOptions sound;
   bool brightnessEnabled = true;
   bool pillQuickTiles = false, pillSoundPickers = false;
   int quickActionRows = 2;
@@ -2879,7 +3178,7 @@ struct Menu {
   MenuKind kind;
   C::Button button{nullptr};
   C::TextBlock label{nullptr};
-  C::FontIcon endpointIcon{nullptr};
+  C::FontIcon leadingIcon{nullptr};
   C::Flyout flyout{nullptr};
   C::ListView list{nullptr};
   X::FrameworkElement arrow{nullptr};
@@ -2927,23 +3226,37 @@ class SoundPage {
   X::FrameworkElement arrow_{nullptr};
   C::StackPanel inputBlock_{nullptr};
   C::Button mixerSettings_{nullptr}, soundSettings_{nullptr};
+  C::Button outputSettings_{nullptr}, microphoneMute_{nullptr}, microphoneSettings_{nullptr};
+  C::Button masterLevelButton_{nullptr}, microphoneLevelButton_{nullptr};
+  C::Button headerBack_{nullptr};
+  C::Canvas headerSettingsOverlay_{nullptr};
+  C::Grid headerSettingsSlot_{nullptr}, microphoneRow_{nullptr};
+  X::FrameworkElement spatialSection_{nullptr}, spatialHeading_{nullptr};
+  C::Button spatialPicker_{nullptr};
+  Journal spatialVisibilityJournal_;
   Journal gearJournal_;
   Journal pickerShapeJournal_;
   ModSettings settings_;
   std::shared_ptr<Menu> input_;
   C::Slider master_{nullptr};
+  C::Slider microphone_{nullptr};
   C::Button masterIcon_{nullptr};
   C::Grid footer_{nullptr};
+  C::StackPanel footerRows_{nullptr};
   C::Border footerBorder_{nullptr};
   X::Style pickerBase_{nullptr};
   std::shared_ptr<AnimatedVolume> masterAnimation_;
-  sound::WheelVolume masterWheel_;
+  sound::WheelVolume masterWheel_, microphoneWheel_;
   VolumeToolTip volumeTip_;
   std::function<void()> volumeChanged_;
   bool preparing_ = false, prepared_ = false, rowsDirty_ = true;
   std::vector<std::pair<winrt::weak_ref<C::TextBlock>, M::TranslateTransform>> textBaselines_;
   sound::Audio audio_;
   bool sync_ = false, expanded_ = true, restoring_ = false;
+  bool microphoneSync_ = false;
+  std::optional<bool> microphoneMuted_;
+  std::wstring microphoneId_;
+  unsigned long long microphonePending_ = 0;
   int glyph_ = -2;
   std::wstring inputSignature_;
   sound::Snapshot latest_;
@@ -2996,20 +3309,33 @@ class SoundPage {
   // VM rows on opening: the new page first shows the previous session list, then
   // the shell replaces it; the rows are hidden until the list settles, then fade.
   bool openHold_ = false, openRebuilt_ = false;
-  // Page title ("Sound"): its font family for the app volume numbers.
-  // The native QA_All_Settings animation in FooterIconButtonStyle, as the Quick
-  // Settings gear: it turns while the button is held.
+  // Page title ("Sound"): its font family and foreground for volume numbers.
+  // The header gear uses the back button's native template and hover plate.
+  // Both positions can use the same system QA_All_Settings animation.
   void SettingsGear(C::Button const &button) {
+    constexpr double gearSize = 16;
     try {
       gearJournal_.Restore();
-      if (auto style = Resource(page_, L"FooterIconButtonStyle").try_as<X::Style>()) {
-        button.Style(style);
-        button.Width(36);
-        button.Height(36);
-        button.Margin({-2, -2, -2, -2});
+      bool inHeader = headerSettingsSlot_ && settings_.sound.SettingsInHeader();
+      button.ClearValue(C::Control::TemplateProperty());
+      if (inHeader) {
+        button.Style(headerBack_.Style());
+        if (auto layout = headerBack_.Template())
+          button.Template(layout);
+        button.Padding(headerBack_.Padding());
+        button.Width(headerSettingsSlot_.Width());
+        button.Height(headerSettingsSlot_.Height());
+        button.Margin({});
+      } else {
+        auto style = Resource(page_, L"FooterIconButtonStyle").try_as<X::Style>();
+        button.Style(style ? style : Resource(page_, L"IconButtonStyle").try_as<X::Style>());
+        button.Padding({});
+        button.Width(style ? 36 : 32);
+        button.Height(style ? 36 : 32);
+        button.Margin(style ? X::Thickness{-2, -2, -2, -2} : X::Thickness{});
       }
       if (!settings_.altSoundGear) {
-        button.Content(SymbolGlyph(page_, 0xe713, 16));
+        button.Content(SymbolGlyph(page_, 0xe713, gearSize));
         return;
       }
       auto factory = NativeAnimatedFactory();
@@ -3017,25 +3343,40 @@ class SoundPage {
       auto icon = factory.as<U::IAnimatedIconFactory>().CreateInstance(nullptr, inner);
       auto statics = factory.as<U::IAnimatedIconStatics>();
       icon.Source(NativeSource(L"ControlCenter.QA_All_Settings"));
-      icon.Width(16);
-      icon.Height(16);
+      icon.Width(gearSize);
+      icon.Height(gearSize);
       icon.IsHitTestVisible(false);
       button.Content(icon);
-      // The footer style writes AnimatedIcon.State on the button; the icon follows it.
-      auto token = button.RegisterPropertyChangedCallback(
-          statics.StateProperty(),
-          [statics, icon](X::DependencyObject const &sender, X::DependencyProperty const &) {
-            try {
-              statics.SetState(icon, statics.GetState(sender));
-            } catch (...) {
-            }
-          });
-      gearJournal_.undo.push_back([button, statics, token] {
-        button.UnregisterPropertyChangedCallback(statics.StateProperty(), token);
-      });
+      auto watch = [&](X::DependencyProperty const &property) {
+        auto token = button.RegisterPropertyChangedCallback(
+            property, [statics, icon, inHeader](X::DependencyObject const &sender,
+                                               X::DependencyProperty const &) {
+              try {
+                if (inHeader) {
+                  auto control = sender.as<P::ButtonBase>();
+                  statics.SetState(icon, control.IsPressed() ? L"Pressed" :
+                                        control.IsPointerOver() ? L"PointerOver" : L"Normal");
+                } else {
+                  statics.SetState(icon, statics.GetState(sender));
+                }
+              } catch (...) {
+              }
+            });
+        gearJournal_.undo.push_back([button, property, token] {
+          button.UnregisterPropertyChangedCallback(property, token);
+        });
+      };
+      if (inHeader) {
+        // The back template leaves AnimatedIcon.State to the content owner.
+        statics.SetState(icon, L"Normal");
+        watch(P::ButtonBase::IsPressedProperty());
+        watch(P::ButtonBase::IsPointerOverProperty());
+      } else {
+        watch(statics.StateProperty());
+      }
     } catch (...) {
       Wh_Log(L"SoundGearIconError %08X", winrt::to_hresult());
-      button.Content(SymbolGlyph(page_, 0xe713, 14));
+      button.Content(SymbolGlyph(page_, 0xe713, gearSize));
     }
   }
   template <class R> void Keep(R &&r) {
@@ -3139,17 +3480,17 @@ class SoundPage {
     SliderLook{journal_, revoke_, thinSliders_}.Geometry(slider);
     ThinSlider(slider);
   }
-  // Glyphs centred on the row/button height. At 125% (40 px rows/buttons, 20 px
-  // glyph) the native insets put dropdown rows 1 px high and closed OD/ID/SS
-  // buttons 1 px low. Margins, not transforms, keep the glyphs on the pixel grid.
+  // Optical offsets for flyout rows and the default closed picker. At 125%,
+  // 0.8 DIP corresponds to one physical pixel.
   static constexpr double listGlyphDrop = .8, buttonGlyphRaise = .8;
   std::set<void *> thinSliders_;
   // Thin look: SliderLook. VM rows keep the right edge on the badge column.
   void ThinSlider(C::Slider const &slider) {
-    SliderLook{journal_, revoke_, thinSliders_, slider == master_}.Thin(
-        slider, [this, slider](double half) {
-          return slider == master_ ? X::Thickness{12 - half, 0, 12 - half, 0}
-                                   : X::Thickness{12 - half, 0, -half, 0};
+    bool endpoint = slider == master_ || slider == microphone_;
+    SliderLook{journal_, revoke_, thinSliders_, endpoint}.Thin(
+        slider, [endpoint](double half) {
+          return endpoint ? X::Thickness{12 - half, 0, 12 - half, 0}
+                          : X::Thickness{12 - half, 0, -half, 0};
         });
   }
   void AlignRows() {
@@ -3285,8 +3626,8 @@ class SoundPage {
               Add(parent, glyph);
               Set(text, X::UIElement::OpacityProperty(), winrt::box_value(0.));
             }
-            if (item.IsSelected() && menu->endpointIcon)
-              menu->endpointIcon.Glyph(text.Text());
+            if (item.IsSelected() && menu->leadingIcon)
+              menu->leadingIcon.Glyph(text.Text());
           }
         }
         return false;
@@ -3384,17 +3725,17 @@ class SoundPage {
           text = device.name;
           break;
         }
-    if (m->endpointIcon && m->kind == MenuKind::Output) {
+    if (m->leadingIcon && m->kind == MenuKind::Output) {
       auto code = String(ModelValue(selected, L"EndpointIcon"));
       if (code.size() == 1)
-        m->endpointIcon.Glyph(code);
+        m->leadingIcon.Glyph(code);
       else if (auto item = m->list.ContainerFromItem(selected).try_as<X::DependencyObject>())
         Find(item, [&](auto const &e) {
           if (auto glyph = e.template try_as<C::TextBlock>();
               glyph && glyph.Text().size() == 1 && C::Grid::GetColumn(glyph) == 0 &&
               Parent(glyph).template try_as<C::Grid>() &&
               Parent(glyph).template as<C::Grid>().ColumnDefinitions().Size() == 3) {
-            m->endpointIcon.Glyph(glyph.Text());
+            m->leadingIcon.Glyph(glyph.Text());
             return true;
           }
           return false;
@@ -3428,6 +3769,13 @@ class SoundPage {
       if (button.Padding() != X::Thickness{}) {
         pickerShapeJournal_.Save(button, C::Control::PaddingProperty());
         button.Padding({0, 0, 0, 0});
+      }
+      // The capsule centres its glyphs on both axes; the default picker's
+      // optical lift would move the leading glyph above the cap's centre.
+      auto icon = menu->leadingIcon;
+      if (icon && icon.Margin() != X::Thickness{}) {
+        pickerShapeJournal_.Save(icon, X::FrameworkElement::MarginProperty());
+        icon.Margin({});
       }
       // Centre each end glyph on the outer cap's axis. The Button template
       // puts its border before Content, so account for that inset explicitly:
@@ -3464,15 +3812,12 @@ class SoundPage {
     X::Automation::AutomationProperties::SetName(m->button, nativeName.empty() ? name : nativeName.c_str());
     m->button.VerticalContentAlignment(X::VerticalAlignment::Center);
     auto g = Grid(L"17,*,12");
-    if (kind == MenuKind::Spatial) {
-      auto phones = SymbolGlyph(owner, 0xe7f6, 16);
-      phones.Margin({0, -buttonGlyphRaise, 0, buttonGlyphRaise});
-      g.Children().Append(phones);
-    } else {
-      m->endpointIcon = SymbolGlyph(owner, kind == MenuKind::Input ? 0xe720 : 0xe7f5);
-      m->endpointIcon.Margin({0, -buttonGlyphRaise, 0, buttonGlyphRaise});
-      g.Children().Append(m->endpointIcon);
-    }
+    wchar_t glyph = kind == MenuKind::Input     ? 0xe720
+                    : kind == MenuKind::Spatial ? 0xe7f6
+                                                : 0xe7f5;
+    m->leadingIcon = SymbolGlyph(owner, glyph);
+    m->leadingIcon.Margin({0, -buttonGlyphRaise, 0, buttonGlyphRaise});
+    g.Children().Append(m->leadingIcon);
     m->label = C::TextBlock();
     TextLine(m->label, 19.6);
     m->label.TextTrimming(X::TextTrimming::CharacterEllipsis);
@@ -3981,6 +4326,7 @@ class SoundPage {
   }
   void PrepareMixerRows() {
     SliderGeometry(master_);
+    SliderGeometry(microphone_);
     auto style = Resource(page_, L"HeaderIconSliderStyle").try_as<X::Style>();
     std::vector<C::Slider> found;
     Find(mixerList_, [&](auto const &e) {
@@ -4014,7 +4360,7 @@ class SoundPage {
         if (name.empty())
           name = root.Name();
         // A new row whose binding has not resolved yet cannot be matched against
-        // hiddenApps; keep it transparent (max 500 ms) instead of showing it.
+        // the hidden-app list; keep it transparent for at most 500 ms.
         bool unnamed = name.empty();
         if (unnamed) {
           auto now = GetTickCount64();
@@ -4073,6 +4419,182 @@ class SoundPage {
       frame_.Height(value);
     }
   }
+  static void OpenDeviceProperties(std::wstring const &id) {
+    auto uri = sound::AudioDevicePropertiesUri(id);
+    if (!uri.empty())
+      ShellExecuteW(nullptr, L"open", uri.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  }
+  C::Slider EndpointSlider(C::Grid const &row, X::Style const &style, PCWSTR name) {
+    C::Slider slider;
+    slider.Style(style);
+    slider.MinWidth(0);
+    slider.MinHeight(0);
+    slider.Height(32);
+    slider.Margin({12, 0, 12, 0});
+    slider.Maximum(100);
+    slider.StepFrequency(1);
+    X::Automation::AutomationProperties::SetName(slider, name);
+    C::Grid::SetColumn(slider, 1);
+    row.Children().Append(slider);
+    return slider;
+  }
+  C::Button VolumeLevelButton() {
+    auto button = Button(page_, sound::Text(
+        L"Set volume to 100", L"Установить громкость на 100 %", L"Establecer el volumen al 100 %",
+        L"Lautstärke auf 100 % einstellen", L"Definir o volume como 100%", L"将音量设为 100%"));
+    button.VerticalAlignment(X::VerticalAlignment::Center);
+    C::TextBlock text;
+    text.FontSize(12);
+    text.TextAlignment(X::TextAlignment::Center);
+    text.HorizontalAlignment(X::HorizontalAlignment::Center);
+    text.VerticalAlignment(X::VerticalAlignment::Center);
+    // Keep the title's font and theme color even when the button is disabled at 100.
+    if (pageTitle_) {
+      text.FontFamily(pageTitle_.FontFamily());
+      D::Binding binding;
+      binding.Source(pageTitle_);
+      binding.Path(X::PropertyPath(L"Foreground"));
+      text.SetBinding(C::TextBlock::ForegroundProperty(), binding);
+    } else if (auto font = Resource(page_, L"ContentControlThemeFontFamily").try_as<M::FontFamily>()) {
+      text.FontFamily(font);
+    }
+    button.Content(text);
+    return button;
+  }
+  static void UpdateEndpointLevelButton(C::Button const &button, double value) {
+    auto text = button.Content().as<C::TextBlock>();
+    auto label = std::isfinite(value) ? std::to_wstring(std::lround(value)) : L"\u2014";
+    if (text.Text() != label)
+      text.Text(label);
+    auto enabled = sound::CanResetVolume(value);
+    if (button.IsEnabled() != enabled)
+      button.IsEnabled(enabled);
+  }
+  C::Button EndpointLevelButton(C::Grid const &row, C::Slider const &slider,
+                                sound::WheelVolume &wheel, PCWSTR automationId) {
+    auto button = VolumeLevelButton();
+    button.HorizontalAlignment(X::HorizontalAlignment::Center);
+    UpdateEndpointLevelButton(button, NAN);
+    X::Automation::AutomationProperties::SetAutomationId(button, automationId);
+    C::Grid::SetColumn(button, 2);
+    row.Children().Append(button);
+    Keep(button.Click(winrt::auto_revoke, [slider, &wheel](auto &&, auto &&) {
+      if (slider.IsEnabled() && sound::CanResetVolume(slider.Value())) {
+        wheel = {};
+        slider.Value(100);
+      }
+    }));
+    return button;
+  }
+  void WatchEndpointSlider(C::Slider const &slider, sound::WheelVolume &wheel) {
+    volumeTip_.Watch(page_, slider, journal_, revoke_);
+    ListenVolumeWheel(
+        slider, [this, slider, &wheel](auto &&, X::Input::PointerRoutedEventArgs const &args) {
+          try {
+            if (!slider.IsEnabled())
+              return;
+            auto properties = args.GetCurrentPoint(slider).Properties();
+            int delta = properties.MouseWheelDelta();
+            if (properties.IsHorizontalMouseWheel() || !delta)
+              return;
+            if (!args.Handled()) {
+              args.Handled(true);
+              slider.Value(wheel.Next(slider.Value(), slider.Minimum(), slider.Maximum(),
+                                      delta, settings_.volumeWheelStep));
+            }
+            volumeTip_.Show(page_, slider, slider.Value());
+          } catch (...) {
+            Wh_Log(L"Endpoint volume wheel: %08X", winrt::to_hresult());
+          }
+        }, revoke_);
+  }
+  static X::FrameworkElement DeviceSettingsIcon() {
+    return Icon(L"device-settings", 16, 2);
+  }
+  void MicrophoneRow(X::Style const &sliderStyle) {
+    microphoneRow_ = Grid(L"32,*,32");
+    microphoneRow_.Visibility(X::Visibility::Collapsed);
+    footerRows_.Children().Append(microphoneRow_);
+    microphoneMute_ = Button(page_, L"");
+    X::Automation::AutomationProperties::SetAutomationId(microphoneMute_, L"NativeSoundInputMute");
+    microphoneRow_.Children().Append(microphoneMute_);
+    microphone_ = EndpointSlider(microphoneRow_, sliderStyle, sound::Text(
+        L"Microphone volume", L"Громкость микрофона", L"Volumen del micrófono",
+        L"Mikrofonlautstärke", L"Volume do microfone", L"麦克风音量"));
+    X::Automation::AutomationProperties::SetAutomationId(microphone_, L"NativeSoundInputVolume");
+    microphoneSettings_ = Button(page_, sound::Text(
+        L"Input device settings", L"Параметры устройства ввода", L"Configuración del dispositivo de entrada",
+        L"Einstellungen des Eingabegeräts", L"Configurações do dispositivo de entrada", L"输入设备设置"));
+    X::Automation::AutomationProperties::SetAutomationId(microphoneSettings_, L"NativeSoundInputProperties");
+    microphoneSettings_.Content(DeviceSettingsIcon());
+    C::Grid::SetColumn(microphoneSettings_, 2);
+    microphoneRow_.Children().Append(microphoneSettings_);
+    microphoneLevelButton_ = EndpointLevelButton(microphoneRow_, microphone_, microphoneWheel_,
+                                                 L"NativeSoundInputPercentage");
+    PositionMicrophoneSettings();
+    Keep(microphoneSettings_.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
+      auto state = audio_.Get();
+      if (sound::ShowMicrophoneRow(settings_.sound, state))
+        OpenDeviceProperties(state.inputId);
+    }));
+    Keep(microphoneMute_.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
+      if (settings_.sound.microphoneAuto && !microphoneId_.empty())
+        microphonePending_ = audio_.Send({sound::Action::InputMute, microphoneId_});
+    }));
+    Keep(microphone_.ValueChanged(winrt::auto_revoke, [this](auto &&, auto const &args) {
+      UpdateEndpointLevelButton(microphoneLevelButton_, args.NewValue());
+      if (!microphoneSync_ && settings_.sound.microphoneAuto && !microphoneId_.empty())
+        microphonePending_ = audio_.Send(
+            {sound::Action::InputVolume, microphoneId_, float(args.NewValue() / 100)});
+    }));
+    WatchEndpointSlider(microphone_, microphoneWheel_);
+  }
+  void PositionMicrophoneSettings() {
+    if (!microphoneSettings_)
+      return;
+    bool device = settings_.sound.microphoneDeviceSettings;
+    microphoneSettings_.Visibility(device ? X::Visibility::Visible : X::Visibility::Collapsed);
+    microphoneLevelButton_.Visibility(device ? X::Visibility::Collapsed : X::Visibility::Visible);
+  }
+  void ApplyMicrophone(sound::Snapshot const &state) {
+    if (!microphone_)
+      return;
+    auto visible = sound::ShowMicrophoneRow(settings_.sound, state);
+    auto visibility = visible ? X::Visibility::Visible : X::Visibility::Collapsed;
+    if (microphoneRow_.Visibility() != visibility) {
+      microphoneRow_.Visibility(visibility);
+      if (!visible)
+        volumeTip_.Hide();
+    }
+    auto id = visible ? state.inputId : std::wstring{};
+    if (id != microphoneId_) {
+      microphoneId_ = std::move(id);
+      microphonePending_ = 0;
+      microphoneWheel_ = {};
+    }
+    if (!visible || state.applied < microphonePending_)
+      return;
+    auto value = sound::EndpointVolumePercent(state.inputVolume, state.inputMuted);
+    if (microphone_.Value() != value) {
+      microphoneSync_ = true;
+      microphone_.Value(value);
+      microphoneSync_ = false;
+    }
+    UpdateEndpointLevelButton(microphoneLevelButton_, microphone_.Value());
+    if (microphoneMute_.IsEnabled() != state.inputMuteAvailable)
+      microphoneMute_.IsEnabled(state.inputMuteAvailable);
+    if (microphoneMuted_ != state.inputMuted) {
+      microphoneMuted_ = state.inputMuted;
+      microphoneMute_.Content(SymbolGlyph(page_, state.inputMuted ? 0xec54 : 0xe720));
+      auto name = state.inputMuted
+          ? sound::Text(L"Unmute microphone", L"Включить звук микрофона", L"Activar el sonido del micrófono",
+                        L"Mikrofonstummschaltung aufheben", L"Reativar o som do microfone", L"取消麦克风静音")
+          : sound::Text(L"Mute microphone", L"Выключить звук микрофона", L"Silenciar el micrófono",
+                        L"Mikrofon stummschalten", L"Silenciar microfone", L"将麦克风静音");
+      X::Automation::AutomationProperties::SetName(microphoneMute_, name);
+      C::ToolTipService::SetToolTip(microphoneMute_, winrt::box_value(name));
+    }
+  }
   void Master(C::ItemsControl const &oldFooter, X::Style const &sliderStyle) {
     // Keep the actual Footer and its native group/border visible. The shell uses
     // that slot when measuring the advanced page; a sibling is not equivalent.
@@ -4098,8 +4620,11 @@ class SoundPage {
       }));
     }
     auto original = footerBorder_.Child();
+    footerRows_ = C::StackPanel();
+    MicrophoneRow(sliderStyle);
     footer_ = Grid(L"32,*,32");
     footer_.Name(L"NativeSoundMasterRow");
+    footerRows_.Children().Append(footer_);
     FooterMargins();
     masterIcon_ = Button(page_, sound::Text(L"Turn sound on or off", L"Включить или выключить звук",
                           L"Activar o desactivar el sonido", L"Ton ein- oder ausschalten",
@@ -4113,31 +4638,38 @@ class SoundPage {
         Wh_Log(L"MasterAnimationError %08X", winrt::to_hresult());
       }
     footer_.Children().Append(masterIcon_);
-    master_ = C::Slider();
-    master_.Style(sliderStyle);
-    master_.MinWidth(0);
-    master_.MinHeight(0);
-    master_.Height(32);
-    master_.Margin({12, 0, 12, 0});
-    master_.Maximum(100);
-    master_.StepFrequency(1);
-    C::Grid::SetColumn(master_, 1);
-    footer_.Children().Append(master_);
-    X::Automation::AutomationProperties::SetName(master_, sound::Text(L"System volume", L"Общая громкость", L"Volumen del sistema", L"Systemlautstärke", L"Volume do sistema", L"系统音量"));
+    master_ = EndpointSlider(footer_, sliderStyle, sound::Text(
+        L"System volume", L"Общая громкость", L"Volumen del sistema", L"Systemlautstärke",
+        L"Volume do sistema", L"系统音量"));
     auto settings = Button(page_, sound::Text(L"Sound settings", L"Параметры звука",
                            L"Configuración de sonido", L"Soundeinstellungen",
                            L"Configurações de som", L"声音设置"));
     soundSettings_ = settings;
-    SettingsGear(settings);
+    X::Automation::AutomationProperties::SetAutomationId(settings, L"NativeSoundSettings");
     C::Grid::SetColumn(settings, 2);
     footer_.Children().Append(settings);
     auto nativeBorder = footerBorder_;
-    nativeBorder.Child(footer_);
+    outputSettings_ = Button(page_, sound::Text(
+        L"Output device settings", L"Параметры устройства вывода", L"Configuración del dispositivo de salida",
+        L"Einstellungen des Ausgabegeräts", L"Configurações do dispositivo de saída", L"输出设备设置"));
+    X::Automation::AutomationProperties::SetAutomationId(outputSettings_, L"NativeSoundOutputProperties");
+    outputSettings_.Content(DeviceSettingsIcon());
+    outputSettings_.Visibility(X::Visibility::Collapsed);
+    outputSettings_.IsEnabled(false);
+    C::Grid::SetColumn(outputSettings_, 2);
+    footer_.Children().Append(outputSettings_);
+    masterLevelButton_ = EndpointLevelButton(footer_, master_, masterWheel_, L"NativeSoundMasterPercentage");
+    masterLevelButton_.Visibility(X::Visibility::Collapsed);
+    Keep(outputSettings_.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
+      OpenDeviceProperties(audio_.Get().outputId);
+    }));
+    nativeBorder.Child(footerRows_);
     journal_.undo.push_back([nativeBorder, original] { nativeBorder.Child(original); });
     Keep(settings.Click(winrt::auto_revoke, [](auto &&, auto &&) {
       ShellExecuteW(nullptr, L"open", L"ms-settings:sound", nullptr, nullptr, SW_SHOWNORMAL);
     }));
     Keep(master_.ValueChanged(winrt::auto_revoke, [this](auto &&, auto const &args) {
+      UpdateEndpointLevelButton(masterLevelButton_, master_.IsEnabled() ? args.NewValue() : NAN);
       if (!sync_) {
         userChangeAt_ = GetTickCount64();
         auto value = float(args.NewValue() / 100);
@@ -4145,33 +4677,105 @@ class SoundPage {
         MasterGlyph(value, value <= 0);
       }
     }));
-    volumeTip_.Watch(page_, master_, journal_, revoke_);
-    ListenVolumeWheel(
-        master_, [this](auto &&, X::Input::PointerRoutedEventArgs const &args) {
-          try {
-            if (!master_.IsEnabled())
-              return;
-            auto point = args.GetCurrentPoint(master_);
-            if (point.Properties().IsHorizontalMouseWheel())
-              return;
-            int delta = point.Properties().MouseWheelDelta();
-            if (!delta)
-              return;
-            if (args.Handled()) {
-              volumeTip_.Show(page_, master_, master_.Value());
-              return;
-            }
-            args.Handled(true);
-            master_.Value(masterWheel_.Next(master_.Value(), master_.Minimum(),
-                                           master_.Maximum(), delta, settings_.volumeWheelStep));
-            volumeTip_.Show(page_, master_, master_.Value());
-          } catch (...) {
-            Wh_Log(L"MasterWheelError %08X", winrt::to_hresult());
-          }
-        }, revoke_);
+    WatchEndpointSlider(master_, masterWheel_);
     Keep(masterIcon_.Click(winrt::auto_revoke, [this](auto &&, auto &&) {
       pending_ = audio_.Send({sound::Action::MasterMute});
     }));
+  }
+  void AlignSettingsHeader() {
+    if (!settings_.sound.SettingsInHeader() || !headerSettingsOverlay_.IsLoaded() ||
+        !headerBack_.IsLoaded() || headerBack_.ActualWidth() <= 0 ||
+        page_.ActualWidth() <= 0)
+      return;
+    auto back = headerBack_.TransformToVisual(page_).TransformPoint(
+        {float(headerBack_.ActualWidth()), 0});
+    auto leftInPage = page_.ActualWidth() - back.X;
+    auto position = page_.TransformToVisual(headerSettingsOverlay_).TransformPoint(
+        {float(leftInPage), back.Y});
+    auto previousLeft = C::Canvas::GetLeft(headerSettingsSlot_);
+    auto previousTop = C::Canvas::GetTop(headerSettingsSlot_);
+    if (!std::isfinite(previousLeft) || std::abs(previousLeft - position.X) > .01)
+      C::Canvas::SetLeft(headerSettingsSlot_, position.X);
+    if (!std::isfinite(previousTop) || std::abs(previousTop - position.Y) > .01)
+      C::Canvas::SetTop(headerSettingsSlot_, position.Y);
+    if (headerSettingsSlot_.Visibility() != X::Visibility::Visible)
+      headerSettingsSlot_.Visibility(X::Visibility::Visible);
+  }
+  void PrepareSettingsHeader() {
+    // The header's native container can be narrow. Host the overlay in a
+    // common grid so its coordinates cover both the header and the footer.
+    C::Grid grid{nullptr};
+    for (auto ancestor = Parent(footerBorder_); ancestor; ancestor = Parent(ancestor)) {
+      if (auto candidate = ancestor.try_as<C::Grid>();
+          candidate && Find(candidate, [&](auto const &element) { return element == headerBack_; })) {
+        grid = candidate;
+        break;
+      }
+      if (ancestor == page_)
+        break;
+    }
+    if (!grid)
+      return;
+    headerSettingsOverlay_ = C::Canvas();
+    C::Grid::SetColumnSpan(headerSettingsOverlay_, std::max(1u, grid.ColumnDefinitions().Size()));
+    C::Grid::SetRowSpan(headerSettingsOverlay_, std::max(1u, grid.RowDefinitions().Size()));
+    headerSettingsSlot_ = C::Grid();
+    headerSettingsSlot_.Width(headerBack_.Width());
+    headerSettingsSlot_.Height(headerBack_.Height());
+    headerSettingsSlot_.Visibility(X::Visibility::Collapsed);
+    headerSettingsOverlay_.Children().Append(headerSettingsSlot_);
+    Add(grid, headerSettingsOverlay_);
+    Keep(page_.LayoutUpdated(winrt::auto_revoke, [this](auto &&, auto &&) {
+      try {
+        AlignSettingsHeader();
+      } catch (winrt::hresult_error const &) {
+        // Layout can fire while the shell is detaching the page.
+      }
+    }));
+  }
+  void PositionSoundSettings() {
+    if (!soundSettings_)
+      return;
+    bool inHeader = settings_.sound.SettingsInHeader();
+    if (!headerSettingsSlot_) {
+      if (inHeader)
+        Wh_Log(L"Sound header layout unavailable; keeping the settings button beside volume");
+      SettingsGear(soundSettings_);
+      return;
+    }
+    auto target = inHeader ? headerSettingsSlot_ : footer_;
+    auto previous = inHeader ? footer_ : headerSettingsSlot_;
+    uint32_t index;
+    if (previous.Children().IndexOf(soundSettings_, index)) {
+      previous.Children().RemoveAt(index);
+      C::Grid::SetColumn(soundSettings_, inHeader ? 0 : 2);
+      target.Children().Append(soundSettings_);
+    }
+    using Right = sound::SystemVolumeRight;
+    auto right = settings_.sound.systemVolumeRight;
+    outputSettings_.Visibility(right == Right::DeviceSettings ? X::Visibility::Visible : X::Visibility::Collapsed);
+    masterLevelButton_.Visibility(right == Right::Percentage ? X::Visibility::Visible : X::Visibility::Collapsed);
+    if (!inHeader)
+      headerSettingsSlot_.Visibility(X::Visibility::Collapsed);
+    SettingsGear(soundSettings_);
+  }
+  void ApplySpatialVisibility() {
+    if (settings_.sound.spatialSound) {
+      spatialVisibilityJournal_.Restore();
+      return;
+    }
+    if (auto menu = MenuFor(MenuKind::Spatial); menu && menu->open)
+      menu->flyout.Hide();
+    auto collapse = [&](X::FrameworkElement const &element) {
+      spatialVisibilityJournal_.Save(element, X::UIElement::VisibilityProperty());
+      element.Visibility(X::Visibility::Collapsed);
+    };
+    if (spatialSection_)
+      collapse(spatialSection_);
+    else if (spatialPicker_) {
+      collapse(spatialHeading_);
+      collapse(spatialPicker_);
+    }
   }
 
 public:
@@ -4196,11 +4800,24 @@ public:
     }
   }
   void RefreshMasterNow() {
-    if (master_ && page_.IsLoaded())
-      ApplyMaster(State());
+    if (master_ && page_.IsLoaded()) {
+      auto state = State();
+      ApplyMaster(state);
+      ApplyMicrophone(state);
+    }
   }
   void ApplySettings(ModSettings const &next) {
     auto previous = std::exchange(settings_, next);
+    if (previous.sound.microphoneAuto != next.sound.microphoneAuto) {
+      audio_.EnableInputVolume(next.sound.microphoneAuto);
+      ApplyMicrophone(audio_.Get());
+    }
+    if (previous.sound.microphoneDeviceSettings != next.sound.microphoneDeviceSettings)
+      PositionMicrophoneSettings();
+    if (previous.sound.spatialSound != next.sound.spatialSound)
+      ApplySpatialVisibility();
+    if (previous.sound.systemVolumeRight != next.sound.systemVolumeRight)
+      PositionSoundSettings();
     if (previous.pillSoundPickers != next.pillSoundPickers)
       ApplyPickerShapes();
     if (previous.altSoundMixer != next.altSoundMixer)
@@ -4240,11 +4857,14 @@ public:
       c.applied = s.applied;
       c.error = s.error;
       c.masterNoticeAt = 0;
+      c.inputVolumeAvailable = false;
       return c;
     }
     return s;
   }
   void ApplyMaster(sound::Snapshot const &state) {
+    if (outputSettings_ && outputSettings_.IsEnabled() != !state.outputId.empty())
+      outputSettings_.IsEnabled(!state.outputId.empty());
     if (!master_ || state.applied < pending_)
       return;
     // While the user moves SV, the echo of an earlier value from Core Audio is
@@ -4255,7 +4875,8 @@ public:
     master_.IsEnabled(state.masterAvailable);
     masterIcon_.IsEnabled(state.masterAvailable);
     if (!dragging)
-      master_.Value(state.muted ? 0 : std::round(state.master * 100));
+      master_.Value(sound::EndpointVolumePercent(state.master, state.muted));
+    UpdateEndpointLevelButton(masterLevelButton_, state.masterAvailable ? master_.Value() : NAN);
     sync_ = false;
     if (!dragging)
       MasterGlyph(state.master, state.muted);
@@ -4303,9 +4924,20 @@ public:
     ConvertList(output, MenuKind::Output, outputTitle.as<C::TextBlock>());
     Input(Parent(outputTitle).as<C::Panel>());
     ConvertList(spatial, MenuKind::Spatial, spatialTitle.as<C::TextBlock>());
+    spatialHeading_ = spatialTitle;
+    spatialPicker_ = MenuFor(MenuKind::Spatial)->button;
+    // Hide the dedicated group along with its margins and separator.
+    for (auto group = Parent(spatialTitle); group && group != page_; group = Parent(group)) {
+      if (Find(group, [&](auto const &e) { return e == outputTitle || e == mixer || e == inputBlock_; }))
+        break;
+      if (Find(group, [&](auto const &e) { return e == spatialPicker_; }))
+        spatialSection_ = group;
+    }
+    ApplySpatialVisibility();
     Mixer();
     Master(oldFooter, style);
     if (auto back = Named(page_, L"BackButton").try_as<C::Button>()) {
+      headerBack_ = back;
       Set(back, X::FrameworkElement::WidthProperty(), winrt::box_value(32.));
       Set(back, X::FrameworkElement::HeightProperty(), winrt::box_value(32.));
       Set(back, X::FrameworkElement::MinWidthProperty(), winrt::box_value(0.));
@@ -4370,6 +5002,7 @@ public:
           uint32_t index = 0;
           parent.Children().IndexOf(back, index);
           Add(parent, clone, index + 1);
+          headerBack_ = clone;
           auto weakBack = winrt::make_weak(back);
           auto weakPage = winrt::make_weak(page_);
           Keep(clone.Click(winrt::auto_revoke, [weakBack, weakPage](auto &&, auto &&) {
@@ -4406,6 +5039,9 @@ public:
         }
       }
     }
+    if (headerBack_)
+      PrepareSettingsHeader();
+    PositionSoundSettings();
     for (auto name : {L"PageTitleText", L"PageTitle"})
       if (auto t = Named(page_, name).try_as<C::TextBlock>()) {
         journal_.Save(t, C::TextBlock::TextProperty());
@@ -4440,7 +5076,7 @@ public:
         }
       });
     }
-    audio_.Start(volumeChanged_);
+    audio_.Start(volumeChanged_, settings_.sound.microphoneAuto);
     return true;
   }
   void PrepareInitialLayout() {
@@ -4460,6 +5096,7 @@ public:
       latest_ = state;
       SyncInput(state);
       ApplyMaster(state);
+      ApplyMicrophone(state);
       for (auto const &menu : menus_)
         if (menu != input_)
           Summary(menu);
@@ -4503,7 +5140,7 @@ public:
     if (auto name = String(ModelValue(out->list.SelectedItem(), L"EndpointFriendlyName"));
         !name.empty() && name != current)
       return false;
-    if (spatial && !spatial->list.Items().Size())
+    if (settings_.sound.spatialSound && spatial && !spatial->list.Items().Size())
       return false;
     if (!expanded_)
       return true;
@@ -4837,12 +5474,13 @@ public:
   // Divider -> SV rail and SV rail -> panel edge: one StepPx each. The divider
   // is a 1 DIP border (one pixel), the SV control 32 DIP (centre at 16).
   void FooterMargins() {
-    if (!footer_)
+    if (!footerRows_)
       return;
     auto root = page_.XamlRoot();
     double s = root ? root.RasterizationScale() : 1.;
     double step = StepPx(s), half = std::round(16 * s), border = std::max(1., std::round(s));
-    footer_.Margin({20, (step - border - half) / s, 20, (step - half) / s});
+    footerRows_.Margin({20, (step - border - half) / s, 20, (step - half) / s});
+    microphoneRow_.Margin({0, 0, 0, (step - half * 2) / s});
   }
   // The SV divider lies on the footer's base acrylic, the line above All
   // settings on the tiles' layer (#09FFFFFF, = the Sound content's
@@ -4951,21 +5589,20 @@ public:
   // Level column: the number, or the mute glyph at 0.
   static void ShowLevel(AppRow &row, double value) {
     long n = std::lround(value);
+    bool showMute = n <= 0 && row.alternateMute;
     if (row.level)
       row.level.Text(std::to_wstring(n));
     if (row.levelButton) {
-      row.levelButton.Visibility(n <= 0 && row.alternateMute ? X::Visibility::Collapsed
-                                                       : X::Visibility::Visible);
+      row.levelButton.Visibility(showMute ? X::Visibility::Collapsed : X::Visibility::Visible);
       // At 100 the button is disabled rather than taken out of hit testing: a
       // hit-test change under the pointer leaves the button's pointer-over state
       // set, and its hover plate came back on the next visual state update.
-      bool enabled = n > 0 && n < 100;
+      bool enabled = sound::CanResetVolume(n, row.alternateMute);
       if (row.levelButton.IsEnabled() != enabled)
         row.levelButton.IsEnabled(enabled);
     }
     if (row.levelMute)
-      row.levelMute.Visibility(n <= 0 && row.alternateMute ? X::Visibility::Visible
-                                                          : X::Visibility::Collapsed);
+      row.levelMute.Visibility(showMute ? X::Visibility::Visible : X::Visibility::Collapsed);
   }
   void SetAppMuteIcon(AppRow &row, C::Slider const &slider) {
     row.alternateMute = settings_.altAppUnmute;
@@ -5037,40 +5674,18 @@ public:
         winrt::box_value(X::HorizontalAlignment::Center));
     Set(toggle, C::Control::VerticalContentAlignmentProperty(),
         winrt::box_value(X::VerticalAlignment::Center));
-    // The mute indicator replaces the number in the level column at 0. The
-    // app's volume is shown as a number in the column under the SV settings
+    // The app's volume is shown as a number in the column under the SV settings
     // button: 32 DIP wide, 12 DIP after the slider, i.e. inside the row's 64 DIP
     // right margin (negative margin; a Grid does not clip).
     // The number sits in a 32 DIP button with the same hover plate as the mute
-    // button: pressing it (1-99) sets the app's volume to 100, written to the
-    // session's model like the mouse wheel. At 100 it takes no input; at 0 the
-    // mute button takes its place.
-    row->levelButton = Button(page_, sound::Text(L"Set volume to 100", L"Установить громкость на 100 %", L"Establecer el volumen al 100 %", L"Lautstärke auf 100 % einstellen", L"Definir o volume como 100%", L"将音量设为 100%"));
+    // button: pressing it below 100 sets the app's volume to 100, written to
+    // the session's model like the mouse wheel. At 0 the alternate mute icon
+    // can replace the number and restore the previous level instead.
+    row->levelButton = VolumeLevelButton();
     row->levelButton.HorizontalAlignment(X::HorizontalAlignment::Right);
-    row->levelButton.VerticalAlignment(X::VerticalAlignment::Center);
     row->levelButton.Margin({0, 0, -44, 0});
-    row->level = C::TextBlock();
-    row->level.TextAlignment(X::TextAlignment::Center);
-    row->level.HorizontalAlignment(X::HorizontalAlignment::Center);
-    row->level.VerticalAlignment(X::VerticalAlignment::Center);
-    // 12 DIP (caption size): "100" stays within a glyph's width inside the 32 DIP
-    // plate, like the icons beside it. The button style carries a symbol font, so
-    // the text font is set explicitly.
-    if (pageTitle_)
-      row->level.FontFamily(pageTitle_.FontFamily());
-    else if (auto font = Resource(page_, L"ContentControlThemeFontFamily").try_as<M::FontFamily>())
-      row->level.FontFamily(font);
-    row->level.FontSize(12);
+    row->level = row->levelButton.Content().as<C::TextBlock>();
     row->level.Text(std::to_wstring(std::lround(slider.Value())));
-    row->levelButton.Content(row->level);
-    // The text keeps the page title's colour (bound, so it follows the theme)
-    // also while the button is disabled at 100.
-    if (pageTitle_) {
-      D::Binding binding;
-      binding.Source(pageTitle_);
-      binding.Path(X::PropertyPath(L"Foreground"));
-      row->level.SetBinding(C::TextBlock::ForegroundProperty(), binding);
-    }
     C::Grid::SetColumnSpan(row->levelButton, std::max(1u, root.ColumnDefinitions().Size()));
     C::Grid::SetRowSpan(row->levelButton, std::max(1u, root.RowDefinitions().Size()));
     Add(root, row->levelButton);
@@ -5080,7 +5695,7 @@ public:
         if (!s)
           return;
         auto value = std::lround(s.Value());
-        if (value < 1 || value > 99)
+        if (!sound::CanResetVolume(value, row->alternateMute))
           return;
         if (RowModel(s) != row->model)
           row->model = RowModel(s);
@@ -5091,10 +5706,8 @@ public:
         Wh_Log(L"Mixer level button: %08X", winrt::to_hresult());
       }
     }));
-    // At 0 a 32 DIP button with the SV's own glyph (QA_Volume, Mute state, same
-    // size) replaces the number; pressing it unmutes like the app icon does: the
-    // native toggle is toggled through UI Automation, so its command and the
-    // mod's restore run exactly as for a click on the icon.
+    // In alternate icon mode a 32 DIP mute button replaces the number at 0.
+    // It runs the app icon's native toggle and the mod's restore through UI Automation.
     {
       auto unmute = sound::Text(L"Unmute", L"Включить звук", L"Activar sonido", L"Stummschaltung aufheben",
                               L"Ativar som", L"取消静音");
@@ -5226,6 +5839,7 @@ public:
         Summary(menu);
     auto const &state = latest_;
     ApplyMaster(state);
+    ApplyMicrophone(state);
     SyncInput(state);
     for (auto const &menu : menus_)
       if (menu->open)
@@ -5282,6 +5896,7 @@ public:
       gearStory_.Stop();
     pickerShapeJournal_.Restore();
     gearJournal_.Restore();
+    spatialVisibilityJournal_.Restore();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();
       if (menu->arrowStory)
@@ -5340,6 +5955,8 @@ public:
       gearStory_.Stop();
     pickerShapeJournal_.Restore();
     gearJournal_.Restore();
+    spatialVisibilityJournal_.undo.clear();
+    spatialVisibilityJournal_.saved.clear();
     for (auto const &menu : menus_) {
       menu->flyout.Hide();
       if (menu->arrowStory)
@@ -6453,9 +7070,9 @@ class QuickPage {
     shortcuts_.Spacing(7.2);
     C::Grid::SetColumn(shortcuts_, 2);
     row.Children().Append(shortcuts_);
-    display_ = ShortcutButton(sound::QuickShortcut::Display);
+    display_ = ShortcutButton(sound::QuickShortcut::Display, 16);
     NightButton();
-    shortcutButtons_ = {{sound::QuickShortcut::Display, display_}};
+    shortcutButtons_.clear();
     visibleShortcuts_.clear();
     settingsRow_ = row;
     return row;
@@ -6491,7 +7108,7 @@ class QuickPage {
     C::ToolTipService::SetToolTip(b, winrt::box_value(name));
     return b;
   }
-  C::Button ShortcutButton(sound::QuickShortcut action) {
+  C::Button ShortcutButton(sound::QuickShortcut action, double iconSize = 13.6) {
     using S = sound::QuickShortcut;
     PCWSTR name = nullptr, uri = nullptr;
     wchar_t glyph = 0;
@@ -6530,7 +7147,7 @@ class QuickPage {
       name = sound::Text(L"Graphics", L"Графика", L"Gráficos", L"Grafik",
                          L"Elementos gráficos", L"图形");
       uri = L"ms-settings:display-advancedgraphics";
-      glyph = 0xe7f4;
+      glyph = 0xe950; // Component
       break;
     case S::NetworkSettings:
       name = sound::Text(L"Advanced network settings", L"Сетевые параметры",
@@ -6556,7 +7173,7 @@ class QuickPage {
     }
     auto button = IconButton(name);
     button.Margin({4, 0, 4, 0});
-    button.Content(SymbolGlyph(view_, glyph, 13.6));
+    button.Content(SymbolGlyph(view_, glyph, iconSize));
     Keep(button.Click(winrt::auto_revoke, [uri](auto &&, auto &&) {
       ShellExecuteW(nullptr, L"open", uri, nullptr, nullptr, SW_SHOWNORMAL);
     }));
@@ -8836,8 +9453,8 @@ namespace native {
 // partially constructed `this`. Pattern validated in ControlCenter.pdb.
 using Focus = int(WINAPI *)(void *, void *);
 using Connect = int(WINAPI *)(void *, int, void *);
-inline Focus originalViewFocus = nullptr, originalPageFocus = nullptr;
-inline Connect originalViewConnect = nullptr, originalPageConnect = nullptr;
+inline Focus originalPageFocus = nullptr;
+inline Connect originalViewConnect = nullptr;
 inline std::atomic<int> discoveryState{0}; // 0 waiting, 1 installing, 2 ready, 3 failed
 inline std::mutex discoveryMutex;
 inline std::mutex discoveryInstallMutex;
@@ -8870,11 +9487,6 @@ inline void Discovered(void *object, bool deferred) noexcept {
   }
   insideDiscovery = false;
 }
-inline int WINAPI ViewFocus(void *self, void *args) {
-  auto result = originalViewFocus(self, args);
-  Discovered(self, false);
-  return result;
-}
 inline int WINAPI PageFocus(void *self, void *args) {
   auto result = originalPageFocus(self, args);
   Discovered(self, false);
@@ -8885,11 +9497,6 @@ inline int WINAPI ViewConnect(void *self, int id, void *target) {
   Discovered(target, true);
   return result;
 }
-inline int WINAPI PageConnect(void *self, int id, void *target) {
-  auto result = originalPageConnect(self, id, target);
-  Discovered(target, true);
-  return result;
-}
 inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   std::lock_guard installLock(discoveryInstallMutex);
   if (stopping)
@@ -8897,25 +9504,20 @@ inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   int expected = 0;
   if (!discoveryState.compare_exchange_strong(expected, 1))
     return expected != 3;
+  // These entry points discover the Quick Settings view and the Sound page.
+  // Adding extra hooks here can make Windhawk reject a usable catalog cache
+  // and require the PDB even if the extra hooks are marked optional.
   WindhawkUtils::SYMBOL_HOOK controlCenterDllHooks[] = {
-      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
-       &originalViewFocus,
-       ViewFocus},
       {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
        &originalViewConnect,
-       ViewConnect,
-       true},
+       ViewConnect},
       {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
        &originalPageFocus,
-       PageFocus,
-       true},
-      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
-       &originalPageConnect,
-       PageConnect,
-       true},
+       PageFocus},
   };
   bool ok = WindhawkUtils::HookSymbols(controlCenter, controlCenterDllHooks,
-                                       ARRAYSIZE(controlCenterDllHooks));
+                                       ARRAYSIZE(controlCenterDllHooks), &shellSymbolOptions) &&
+            originalViewConnect && originalPageFocus;
   if (ok)
     HookQuickRows(controlCenter);
   if (ok && applyNow)
@@ -8962,6 +9564,47 @@ inline void StopHost() {
     // stopping is already set by Wh_ModUninit; wait only for runtime creation.
   }
   StopBridge();
+}
+} // namespace native
+
+
+
+namespace native {
+inline ModSettings ReadPanelSettings(auto readInt, auto readString) {
+  ModSettings settings;
+  settings.quickSoundAccess = readInt(L"taskbar.openSoundFromVolumeIcon") != 0;
+  settings.trayMiddleClickMute = readInt(L"taskbar.middleClickMute") != 0;
+  settings.volumeWheelStep = sound::VolumeWheelStep(readInt(L"sound.volumeWheelStep"));
+  settings.brightnessEnabled = readString(L"quickSettings.brightnessMode") != L"disabled";
+  settings.pillQuickTiles = readString(L"quickSettings.tileShape") == L"pills";
+  settings.pillSoundPickers = readString(L"sound.selectorShape") == L"pills";
+  settings.sound = sound::ParseSoundOptions(readString(L"sound.microphoneVolumeMode"),
+                                           readString(L"sound.microphoneVolumeRight"),
+                                           readString(L"sound.systemVolumeRight"),
+                                           readString(L"sound.spatialSoundMenu"));
+
+  auto rows = readString(L"quickSettings.tileRows");
+  if (rows.size() == 1 && rows.front() >= L'1' && rows.front() <= L'4')
+    settings.quickActionRows = rows.front() - L'0';
+
+  for (size_t i = 0; i < settings.quickShortcuts.size(); ++i) {
+    auto key = L"quickSettings.additionalShortcuts.shortcut" + std::to_wstring(i + 1);
+    settings.quickShortcuts[i] = sound::ParseQuickShortcut(readString(key.c_str()));
+  }
+
+  // Windhawk exposes individual slots without reporting the array length.
+  for (int i = 0, blanks = 0; blanks < 32; ++i) {
+    auto key = L"sound.hiddenApplications[" + std::to_wstring(i) + L"]";
+    auto value = readString(key.c_str());
+    if (value.empty()) {
+      ++blanks;
+      continue;
+    }
+    blanks = 0;
+    sound::AddHiddenApp(settings.hidden, value);
+  }
+  ReadAlternativeIcons(settings, readInt);
+  return settings;
 }
 } // namespace native
 
@@ -10163,7 +10806,7 @@ inline bool HookTray(HMODULE module) {
         L"struct winrt::Windows::UI::Xaml::Input::TappedRoutedEventArgs)"},
        &originalTapped,
        Tapped}};
-  auto result = WindhawkUtils::HookSymbols(module, hooks, ARRAYSIZE(hooks));
+  auto result = WindhawkUtils::HookSymbols(module, hooks, ARRAYSIZE(hooks), &shellSymbolOptions);
   return result;
 }
 using Load = decltype(&LoadLibraryExW);
@@ -10202,7 +10845,7 @@ inline bool Initialize(HINSTANCE instance) {
        &getHost},
       {{LR"(public: int __cdecl TaskbarHost::FrameHeight(void)const )"}, &frameHeight},
       {{LR"(public: void __cdecl std::_Ref_count_base::_Decref(void))"}, &decref}};
-  if (!WindhawkUtils::HookSymbols(taskbar, roots, ARRAYSIZE(roots)))
+  if (!WindhawkUtils::HookSymbols(taskbar, roots, ARRAYSIZE(roots), &shellSymbolOptions))
     Wh_Log(L"Taskbar root symbols unavailable; constructor/tap discovery retained");
   if (auto module = GetModuleHandleW(L"SystemTray.dll")) {
     moduleHooked = true;
@@ -10376,57 +11019,12 @@ inline void Shutdown() {
 
 namespace native {
 inline bool explorer = false;
-inline void ReadHiddenApps(std::vector<std::wstring> &hidden) {
-  hidden.clear();
-  // Windhawk exposes indexed values but no array length. Allow empty rows
-  // between names, including rows left blank in the settings editor.
-  for (int i = 0, blanks = 0; blanks < 32; ++i) {
-    auto name = WindhawkUtils::StringSetting::make(L"hiddenApplications[%d]", i);
-    if (!*name.get()) {
-      ++blanks;
-      continue;
-    }
-    blanks = 0;
-    sound::AddHiddenApp(hidden, name.get());
-  }
-  if (!hidden.empty()) {
-    if (!Wh_GetIntValue(L"usesHiddenAppRows", 0))
-      Wh_SetIntValue(L"usesHiddenAppRows", 1);
-  } else if (!Wh_GetIntValue(L"usesHiddenAppRows", 0)) {
-    auto legacy = WindhawkUtils::StringSetting::make(L"hiddenApps");
-    hidden = sound::ParseHidden(legacy.get());
-  }
-}
 inline ModSettings ReadSettings() {
-  ModSettings settings;
-  auto quickShape = WindhawkUtils::StringSetting::make(L"appearance.quickTiles");
-  auto pickerShape = WindhawkUtils::StringSetting::make(L"appearance.soundPickers");
-  settings.pillQuickTiles = std::wstring_view(quickShape.get()) == L"pills";
-  settings.pillSoundPickers = std::wstring_view(pickerShape.get()) == L"pills";
-  ReadHiddenApps(settings.hidden);
-  settings.volumeWheelStep = sound::VolumeWheelStep(Wh_GetIntSetting(L"volumeWheelStep"));
-  settings.trayMiddleClickMute = Wh_GetIntSetting(L"trayMiddleClickMute") != 0;
-  auto brightness = WindhawkUtils::StringSetting::make(L"brightnessMode");
-  settings.brightnessEnabled = std::wstring_view(brightness.get()) != L"disabled";
-  auto rows = WindhawkUtils::StringSetting::make(L"appearance.quickActionRows");
-  if (!*rows.get())
-    rows = WindhawkUtils::StringSetting::make(L"quickActionRows");
-  std::wstring_view rowCount(rows.get());
-  if (rowCount.size() == 1 && rowCount.front() >= L'1' && rowCount.front() <= L'4')
-    settings.quickActionRows = rowCount.front() - L'0';
-  using S = sound::QuickShortcut;
-  auto first = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut1");
-  ReadAlternativeIcons(settings, Wh_GetIntSetting);
-  if (*first.get()) {
-    for (int i = 0; i < int(settings.quickShortcuts.size()); ++i) {
-      auto slot = WindhawkUtils::StringSetting::make(L"quickSettings.shortcut%d", i + 1);
-      settings.quickShortcuts[i] = sound::ParseQuickShortcut(slot.get());
-    }
-    settings.quickSoundAccess = Wh_GetIntSetting(L"quickSoundAccess") != 0;
-  } else {
-    settings.quickShortcuts = {Wh_GetIntSetting(L"showDisplaySettings") ? S::Display : S::None};
-  }
-  return settings;
+  auto readString = [](PCWSTR key) {
+    auto value = WindhawkUtils::StringSetting::make(key);
+    return std::wstring(value.get());
+  };
+  return ReadPanelSettings(Wh_GetIntSetting, readString);
 }
 } // namespace native
 BOOL Wh_ModInit() {

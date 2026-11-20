@@ -3,6 +3,7 @@
 #define WH_MOD_ID L"native-model-test"
 #include <windhawk_api.h>
 #include "quick.h"
+#include "settings.h"
 #include <cstdio>
 namespace F = winrt::Windows::Foundation;
 struct Store {
@@ -72,6 +73,138 @@ struct Model : winrt::implements<Model, native::D::ICustomPropertyProvider> {
 };
 int main() {
   try {
+    using Right = sound::SystemVolumeRight;
+    auto defaults = sound::ParseSoundOptions(L"", L"", L"", L"");
+    auto customized = sound::ParseSoundOptions(L"auto", L"deviceSettings", L"deviceSettings", L"disabled");
+    auto percentages = sound::ParseSoundOptions(L"auto", L"percentage", L"percentage", L"enabled");
+    auto system = sound::ParseSoundOptions(L"disabled", L"other", L"soundSettings", L"enabled");
+    sound::Snapshot input;
+    if (defaults.microphoneAuto || defaults.microphoneDeviceSettings || !defaults.spatialSound ||
+        defaults.systemVolumeRight != Right::SoundSettings || defaults.SettingsInHeader() ||
+        !customized.microphoneAuto || !customized.microphoneDeviceSettings || customized.spatialSound ||
+        customized.systemVolumeRight != Right::DeviceSettings || !customized.SettingsInHeader() ||
+        percentages.microphoneDeviceSettings || percentages.systemVolumeRight != Right::Percentage ||
+        !percentages.SettingsInHeader() || system.microphoneDeviceSettings || system.SettingsInHeader() ||
+        sound::ShowMicrophoneRow(customized, input)) {
+      std::puts("FAIL: Volume rows must use the selected trailing controls and show one Sound settings button");
+      return 13;
+    }
+    input.inputId = L"{0.0.1.00000000}.{aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb}";
+    if (sound::ShowMicrophoneRow(customized, input)) {
+      std::puts("FAIL: A microphone without a usable level control gets a slider");
+      return 13;
+    }
+    input.inputVolumeAvailable = true;
+    if (!sound::ShowMicrophoneRow(customized, input) ||
+        sound::ShowMicrophoneRow(defaults, input) ||
+        !sound::AudioDevicePropertiesUri(L"").empty() ||
+        sound::AudioDevicePropertiesUri(input.inputId) !=
+            L"ms-settings:sound-properties?endpointId={0.0.1.00000000}.{aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb}") {
+      std::puts("FAIL: The input row and its link must target the available selected microphone");
+      return 13;
+    }
+    std::puts("PASS: Sound options preserve defaults, gate the microphone row and link to the selected endpoint");
+    input.inputVolume = .64f;
+    input.inputMuted = true;
+    if (sound::EndpointVolumePercent(input.inputVolume, input.inputMuted) != 0 ||
+        input.inputVolume != .64f) {
+      std::puts("FAIL: a muted endpoint must display zero and retain its stored level");
+      return 14;
+    }
+    input.inputMuted = false;
+    if (sound::EndpointVolumePercent(input.inputVolume, input.inputMuted) != 64) {
+      std::puts("FAIL: unmuting must show the stored endpoint level");
+      return 14;
+    }
+    std::puts("PASS: muting displays zero and unmuting restores the displayed endpoint level");
+    if (!sound::CanResetVolume(0) || !sound::CanResetVolume(57) ||
+        sound::CanResetVolume(100) || sound::CanResetVolume(NAN) ||
+        sound::CanResetVolume(0, true) || !sound::CanResetVolume(57, true)) {
+      std::puts("FAIL: A visible numeric volume below 100 must reset, including zero when shown");
+      return 14;
+    }
+    std::puts("PASS: A visible numeric volume can be reset from zero or a partial level");
+    {
+      // Old values that Windhawk may still store cannot override grouped settings.
+      std::map<std::wstring, int> numbers{{L"taskbar.openSoundFromVolumeIcon", 1},
+                                         {L"taskbar.middleClickMute", 0},
+                                         {L"sound.volumeWheelStep", 2},
+                                         {L"quickSoundAccess", 0},
+                                         {L"volumeWheelStep", 7}};
+      std::map<std::wstring, std::wstring> strings{
+          {L"quickSettings.brightnessMode", L"auto"}, {L"brightnessMode", L"disabled"},
+          {L"quickSettings.tileRows", L"2"}, {L"quickSettings.tileShape", L"default"},
+          {L"sound.selectorShape", L"default"}, {L"sound.microphoneVolumeMode", L"disabled"},
+          {L"sound.spatialSoundMenu", L"enabled"}, {L"sound.systemVolumeRight", L"soundSettings"},
+          {L"quickSettings.additionalShortcuts.shortcut1", L"display"},
+          {L"quickSettings.shortcut1", L"none"}, {L"hiddenApplications[0]", L"Old.exe"}};
+      auto readInt = [&](PCWSTR key) { return numbers[key]; };
+      auto readString = [&](PCWSTR key) { return strings[key]; };
+      auto settings = native::ReadPanelSettings(readInt, readString);
+      using Shortcut = sound::QuickShortcut;
+      if (!settings.quickSoundAccess || settings.trayMiddleClickMute || settings.volumeWheelStep != 2 ||
+          !settings.brightnessEnabled || settings.quickActionRows != 2 || settings.pillQuickTiles ||
+          settings.pillSoundPickers || settings.sound.microphoneAuto || !settings.sound.spatialSound ||
+          settings.sound.systemVolumeRight != Right::SoundSettings ||
+          settings.quickShortcuts[0] != Shortcut::Display || !settings.hidden.empty()) {
+        std::puts("FAIL: Old values overrode the grouped defaults");
+        return 16;
+      }
+      numbers[L"taskbar.openSoundFromVolumeIcon"] = 0;
+      numbers[L"taskbar.middleClickMute"] = 1;
+      numbers[L"sound.volumeWheelStep"] = 11;
+      strings[L"quickSettings.brightnessMode"] = L"disabled";
+      strings[L"quickSettings.tileRows"] = L"4";
+      strings[L"quickSettings.tileShape"] = L"pills";
+      strings[L"sound.selectorShape"] = L"pills";
+      strings[L"sound.microphoneVolumeMode"] = L"auto";
+      strings[L"sound.spatialSoundMenu"] = L"disabled";
+      strings[L"sound.systemVolumeRight"] = L"percentage";
+      strings[L"quickSettings.additionalShortcuts.shortcut4"] = L"graphics";
+      strings[L"sound.hiddenApplications[0]"] = L"New.exe";
+      strings[L"sound.hiddenApplications[32]"] = L"Final.exe";
+      strings[L"sound.hiddenApplications[65]"] = L"BeyondGap.exe";
+      settings = native::ReadPanelSettings(readInt, readString);
+      if (settings.quickSoundAccess || !settings.trayMiddleClickMute || settings.volumeWheelStep != 11 ||
+          settings.brightnessEnabled || settings.quickActionRows != 4 || !settings.pillQuickTiles ||
+          !settings.pillSoundPickers || !settings.sound.microphoneAuto || settings.sound.spatialSound ||
+          settings.sound.systemVolumeRight != Right::Percentage || settings.quickShortcuts[3] != Shortcut::Graphics ||
+          settings.hidden != std::vector<std::wstring>{L"new.exe", L"final.exe"}) {
+        std::puts("FAIL: Grouped preferences or sparse hidden-app rows were not applied");
+        return 16;
+      }
+      for (int i = 0; i < 33; ++i) {
+        auto index = std::to_wstring(i);
+        strings[L"sound.hiddenApplications[" + index + L"]"] = L"App" + index + L".exe";
+      }
+      settings = native::ReadPanelSettings(readInt, readString);
+      if (settings.hidden.size() != 33 || settings.hidden.back() != L"app32.exe") {
+        std::puts("FAIL: a full hidden-app list was truncated at 32 entries");
+        return 16;
+      }
+      std::puts("PASS: grouped preferences ignore old keys and preserve long and sparse hidden-app lists");
+    }
+    {
+      using Probe = sound::InputVolumeProbe;
+      sound::InputVolumeRetry retry;
+      size_t attempt = 0;
+      for (int delay : {1, 2, 4, 8, 8}) {
+        if (retry.Delay(Probe::Failed).count() != delay) {
+          std::printf("FAIL: microphone retry %zu had the wrong delay\n", ++attempt);
+          return 15;
+        }
+        ++attempt;
+      }
+      if (retry.Delay(Probe::Idle).count() != 0 || retry.Delay(Probe::Failed).count() != 1 ||
+          retry.Delay(Probe::Poll).count() != 1 || retry.Delay(Probe::Failed).count() != 1 ||
+          !sound::UnsupportedInputVolume(E_NOTIMPL) || !sound::UnsupportedInputVolume(E_NOINTERFACE) ||
+          !sound::UnsupportedInputVolume(HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED)) ||
+          sound::UnsupportedInputVolume(HRESULT_FROM_WIN32(ERROR_DEVICE_NOT_CONNECTED))) {
+        std::puts("FAIL: microphone retry must reset on recovery and distinguish unsupported endpoints");
+        return 15;
+      }
+      std::puts("PASS: microphone failures back off and stop polling after recovery or unsupported results");
+    }
     auto soundRequest = native::SoundRequestToken(0xfffffff0, 1);
     if (soundRequest == native::SoundRequestToken(0xfffffff0, 2) ||
         native::SoundEventMatchesRequest(soundRequest, 0xffffffef) ||
@@ -154,10 +287,8 @@ int main() {
     sound::AddHiddenApp(names, L"  Foo, Inc. ");
     sound::AddHiddenApp(names, L" ");
     sound::AddHiddenApp(names, L"STEAM.exe");
-    if (names != std::vector<std::wstring>{L"foo, inc.", L"steam.exe"} ||
-        sound::ParseHidden(L"FOO; Steam.exe, Slack") !=
-            std::vector<std::wstring>{L"foo", L"steam.exe", L"slack"}) {
-      std::puts("FAIL: Hidden app rows keep punctuation and legacy groups still split");
+    if (names != std::vector<std::wstring>{L"foo, inc.", L"steam.exe"}) {
+      std::puts("FAIL: Hidden app rows must keep punctuation and skip blanks");
       return 7;
     }
     std::puts("PASS: Volume wheel and hidden app setting behavior");

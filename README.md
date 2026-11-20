@@ -19,19 +19,21 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 - The mod places Night light and Display settings beside the brightness slider. If the native slider cannot be moved, Windows keeps its original row. Night light uses the native quick action when available and opens Night light settings otherwise.
 - On devices with a battery, the battery button moves into the **Settings** row.
 
-**Appearance**
-
 - **Rows of tiles** sets 1–4 rows per page with Windows pagination. If the mod cannot recognize the tile grid layout, Windows uses its default row count.
 - **Tile shape** rounds the outer edges of Quick Settings tiles in **Pills** mode.
-- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 
 **Sound**
 
 - The "Sound output" page is now simply "Sound".
 - Change the output and input devices and the spatial sound provider from dropdown lists.
 - Below them is a reworked Volume mixer for the apps. It starts collapsed the first time Sound opens in each ShellHost process and remembers its state on subsequent openings.
+- **Microphone volume** defaults to **Off**. **Auto** adds a volume slider above system volume when the selected microphone has an adjustable level. The button on the left mutes and unmutes the microphone without changing its level.
+- **Microphone settings shortcut** shows the volume percentage by default. **Device settings** replaces it with a button for the selected microphone's Windows settings.
+- **Sound settings shortcut** puts the Windows Sound settings button beside system volume by default. **None (Percentage)** shows the volume percentage. **Device settings** opens the selected output device's settings. Both modes move the Sound settings button to the header.
+- **Spatial sound** controls whether the spatial audio menu appears. It is on by default.
+- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 - Volume sliders show the new value when dragged or scrolled. The default wheel step is 2 percentage points.
-- Press an app's icon to mute and restore it, or its volume number to set it to 100.
+- Press a volume number to set that slider to 100. The app icon mutes or restores the app.
 - **Hide from the volume mixer** takes app names or executable names, one per row. Hidden apps keep playing audio.
 
 **Taskbar**
@@ -60,8 +62,6 @@ Control Center discovery uses COM-interface symbol hooks in ControlCenter.dll an
 4. If the panels do not update, restart ShellHost. Windhawk logs contain diagnostic errors.
 
 No prebuilt DLL is required. Open Quick Settings with Win+A and Sound with Win+Ctrl+V. The taskbar volume icon also opens Sound when **Quick access to Sound** is enabled.
-
-After updating, check **Rows of tiles** under **Appearance** if you previously changed the row count.
 
 The repeatable mouse demo recorder is documented in [docs/PREVIEW.ru.md](docs/PREVIEW.ru.md).
 

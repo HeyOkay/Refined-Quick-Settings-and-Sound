@@ -5,8 +5,8 @@ namespace native {
 // partially constructed `this`. Pattern validated in ControlCenter.pdb.
 using Focus = int(WINAPI *)(void *, void *);
 using Connect = int(WINAPI *)(void *, int, void *);
-inline Focus originalViewFocus = nullptr, originalPageFocus = nullptr;
-inline Connect originalViewConnect = nullptr, originalPageConnect = nullptr;
+inline Focus originalPageFocus = nullptr;
+inline Connect originalViewConnect = nullptr;
 inline std::atomic<int> discoveryState{0}; // 0 waiting, 1 installing, 2 ready, 3 failed
 inline std::mutex discoveryMutex;
 inline std::mutex discoveryInstallMutex;
@@ -39,11 +39,6 @@ inline void Discovered(void *object, bool deferred) noexcept {
   }
   insideDiscovery = false;
 }
-inline int WINAPI ViewFocus(void *self, void *args) {
-  auto result = originalViewFocus(self, args);
-  Discovered(self, false);
-  return result;
-}
 inline int WINAPI PageFocus(void *self, void *args) {
   auto result = originalPageFocus(self, args);
   Discovered(self, false);
@@ -54,11 +49,6 @@ inline int WINAPI ViewConnect(void *self, int id, void *target) {
   Discovered(target, true);
   return result;
 }
-inline int WINAPI PageConnect(void *self, int id, void *target) {
-  auto result = originalPageConnect(self, id, target);
-  Discovered(target, true);
-  return result;
-}
 inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   std::lock_guard installLock(discoveryInstallMutex);
   if (stopping)
@@ -66,25 +56,20 @@ inline bool HookControlCenter(HMODULE controlCenter, bool applyNow) {
   int expected = 0;
   if (!discoveryState.compare_exchange_strong(expected, 1))
     return expected != 3;
+  // These entry points discover the Quick Settings view and the Sound page.
+  // Adding extra hooks here can make Windhawk reject a usable catalog cache
+  // and require the PDB even if the extra hooks are marked optional.
   WindhawkUtils::SYMBOL_HOOK controlCenterDllHooks[] = {
-      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
-       &originalViewFocus,
-       ViewFocus},
       {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::ControlCenterView,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
        &originalViewConnect,
-       ViewConnect,
-       true},
+       ViewConnect},
       {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Controls::IControlOverrides>::OnGotFocus(void *))"},
        &originalPageFocus,
-       PageFocus,
-       true},
-      {{LR"(public: virtual int __cdecl winrt::impl::produce<struct winrt::ControlCenter::implementation::FullScreenPage,struct winrt::Windows::UI::Xaml::Markup::IComponentConnector>::Connect(int,void *))"},
-       &originalPageConnect,
-       PageConnect,
-       true},
+       PageFocus},
   };
   bool ok = WindhawkUtils::HookSymbols(controlCenter, controlCenterDllHooks,
-                                       ARRAYSIZE(controlCenterDllHooks));
+                                       ARRAYSIZE(controlCenterDllHooks), &shellSymbolOptions) &&
+            originalViewConnect && originalPageFocus;
   if (ok)
     HookQuickRows(controlCenter);
   if (ok && applyNow)

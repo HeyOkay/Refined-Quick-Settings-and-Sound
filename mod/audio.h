@@ -110,14 +110,25 @@ class Audio final {
     std::mutex mutex;
     std::condition_variable cv;
     bool changed = true;
+    void Signal() {
+      std::lock_guard lock(mutex);
+      changed = true;
+      cv.notify_one();
+    }
+  };
+  struct InputVolumeNotify : winrt::implements<InputVolumeNotify, IAudioEndpointVolumeCallback> {
+    std::shared_ptr<Wake> wake;
+    explicit InputVolumeNotify(std::shared_ptr<Wake> value) : wake(std::move(value)) {}
+    HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA) noexcept override {
+      wake->Signal();
+      return S_OK;
+    }
   };
   struct Notify : winrt::implements<Notify, IMMNotificationClient> {
     std::shared_ptr<Wake> wake;
     explicit Notify(std::shared_ptr<Wake> value) : wake(std::move(value)) {}
     void Signal() {
-      std::lock_guard lock(wake->mutex);
-      wake->changed = true;
-      wake->cv.notify_one();
+      wake->Signal();
     }
     HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(EDataFlow, ERole, LPCWSTR) override {
       Signal();
@@ -165,6 +176,12 @@ class Audio final {
   std::function<void()> publish_;
   winrt::com_ptr<IMMDeviceEnumerator> enumerator_;
   winrt::com_ptr<IAudioEndpointVolume> master_;
+  winrt::com_ptr<IAudioEndpointVolume> inputVolume_;
+  winrt::com_ptr<InputVolumeNotify> inputVolumeObserver_;
+  std::atomic<bool> inputVolumeEnabled_{false};
+  std::wstring inputVolumeId_;
+  bool inputVolumeRejected_ = false;
+  InputVolumeRetry inputVolumeRetry_;
   std::shared_ptr<VolumeFeed> volumeFeed_ = std::make_shared<VolumeFeed>();
   winrt::com_ptr<VolumeNotify> volumeObserver_;
   std::map<std::wstring, SavedVolume> masters_;
@@ -287,6 +304,80 @@ class Audio final {
       ++completed;
     }
   }
+  void UnbindInputVolume() {
+    if (inputVolume_ && inputVolumeObserver_)
+      inputVolume_->UnregisterControlChangeNotify(inputVolumeObserver_.get());
+    inputVolumeObserver_ = nullptr;
+    inputVolume_ = nullptr;
+  }
+  InputVolumeProbe FailedInputVolumeRead(HRESULT result) {
+    UnbindInputVolume();
+    inputVolumeRejected_ = UnsupportedInputVolume(result);
+    return inputVolumeRejected_ ? InputVolumeProbe::Idle : InputVolumeProbe::Failed;
+  }
+  InputVolumeProbe ReadInputVolume(Snapshot &state) {
+    auto id = inputVolumeEnabled_ ? state.inputId : std::wstring{};
+    if (id != inputVolumeId_) {
+      UnbindInputVolume();
+      inputVolumeId_ = id;
+      inputVolumeRejected_ = false;
+      inputVolumeRetry_ = {};
+    }
+    if (id.empty() || inputVolumeRejected_) {
+      UnbindInputVolume();
+      return InputVolumeProbe::Idle;
+    }
+    if (!inputVolume_) {
+      winrt::com_ptr<IMMDevice> device;
+      if (FAILED(enumerator_->GetDevice(id.c_str(), device.put())) || !device)
+        return InputVolumeProbe::Failed;
+      auto result = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_INPROC_SERVER, nullptr,
+                                     inputVolume_.put_void());
+      if (FAILED(result))
+        return FailedInputVolumeRead(result);
+      if (!inputVolume_)
+        return InputVolumeProbe::Failed;
+      inputVolumeObserver_ = winrt::make_self<InputVolumeNotify>(wake_);
+      if (FAILED(inputVolume_->RegisterControlChangeNotify(inputVolumeObserver_.get())))
+        inputVolumeObserver_ = nullptr;
+    }
+    auto result = inputVolume_->GetMasterVolumeLevelScalar(&state.inputVolume);
+    if (FAILED(result) || !std::isfinite(state.inputVolume))
+      return FailedInputVolumeRead(result);
+    float low, high, step;
+    // Software endpoint volume also works for virtual devices. A fixed range
+    // means the device offers no adjustment, regardless of its form factor.
+    state.inputVolumeAvailable =
+        FAILED(inputVolume_->GetVolumeRange(&low, &high, &step)) || high > low;
+    BOOL muted = FALSE;
+    state.inputMuteAvailable = SUCCEEDED(inputVolume_->GetMute(&muted));
+    state.inputMuted = muted;
+    return state.inputVolumeAvailable && !inputVolumeObserver_ ? InputVolumeProbe::Poll
+                                                              : InputVolumeProbe::Idle;
+  }
+  void SetInputVolume(Command const &cmd, float value) {
+    // A queued drag or click can outlive a default device change. Keep both
+    // operations tied to the endpoint that was visible when the event fired.
+    if (!inputVolumeEnabled_ || !inputVolume_ || cmd.id != inputVolumeId_ ||
+        cmd.id != DefaultDevice(eCapture))
+      return;
+    BOOL muted = FALSE;
+    if (cmd.action == Action::InputMute) {
+      winrt::check_hresult(inputVolume_->GetMute(&muted));
+      winrt::check_hresult(inputVolume_->SetMute(!muted, nullptr));
+      return;
+    }
+    bool canMute = SUCCEEDED(inputVolume_->GetMute(&muted));
+    // Keep the last gain when muting at zero, if the endpoint supports mute.
+    if (value <= 0 && canMute && SUCCEEDED(inputVolume_->SetMute(TRUE, nullptr)))
+      return;
+    auto result = inputVolume_->SetMasterVolumeLevelScalar(value, nullptr);
+    if (UnsupportedInputVolume(result))
+      inputVolumeRejected_ = true;
+    winrt::check_hresult(result);
+    if (value > 0 && canMute && muted)
+      winrt::check_hresult(inputVolume_->SetMute(FALSE, nullptr));
+  }
   void Execute(Command const &cmd) {
     error_.clear();
     auto value = Clamp(cmd.value);
@@ -309,6 +400,8 @@ class Audio final {
         value = saved.Toggle(before, muted);
       winrt::check_hresult(master_->SetMasterVolumeLevelScalar(value, nullptr));
       winrt::check_hresult(master_->SetMute(value <= 0, nullptr));
+    } else if (cmd.action == Action::InputVolume || cmd.action == Action::InputMute) {
+      SetInputVolume(cmd, value);
     } else if (cmd.action == Action::Input) {
       winrt::com_ptr<IMMDevice> target;
       winrt::check_hresult(enumerator_->GetDevice(cmd.id.c_str(), target.put()));
@@ -324,7 +417,7 @@ class Audio final {
       SetDefault(cmd.id);
     }
   }
-  bool Read() {
+  std::chrono::seconds Read() {
     Snapshot state;
     state.revision = ++revision_;
     state.applied = applied_;
@@ -351,12 +444,14 @@ class Audio final {
     bool retry = !state.outputId.empty() && !state.masterAvailable;
     // The input list and the endpoint volume have independent failure modes.
     // Publish the current volume even if an endpoint collection is unavailable.
+    bool inputIdKnown = false;
     for (auto flow : {eRender, eCapture})
       try {
         if (flow == eRender)
           state.output = Devices(flow, state.outputId);
         else {
           state.inputId = DefaultDevice(flow);
+          inputIdKnown = true;
           state.input = Devices(flow, state.inputId);
         }
       } catch (winrt::hresult_error const &) {
@@ -365,10 +460,15 @@ class Audio final {
         if (flow == eRender && snapshot_.outputId == state.outputId)
           state.output = snapshot_.output;
         else if (flow == eCapture) {
-          state.inputId = snapshot_.inputId;
-          state.input = snapshot_.input;
+          if (!inputIdKnown)
+            state.inputId = snapshot_.inputId;
+          if (snapshot_.inputId == state.inputId)
+            state.input = snapshot_.input;
         }
       }
+    auto inputProbe = inputIdKnown || !inputVolumeEnabled_ ? ReadInputVolume(state)
+                                                         : InputVolumeProbe::Idle;
+    auto inputDelay = inputVolumeRetry_.Delay(inputProbe);
     // The shell's own lists serve output devices, application sessions and
     // spatial sound; this worker serves the added input selector, the master
     // volume and the tray.
@@ -378,7 +478,7 @@ class Audio final {
     }
     if (publish_)
       publish_();
-    return retry;
+    return retry ? std::chrono::seconds{1} : inputDelay;
   }
   void Run() noexcept {
     bool apartment = false;
@@ -406,9 +506,9 @@ class Audio final {
           }
           applied_ = cmd.serial;
         }
-        bool retry = true;
+        auto retryAfter = std::chrono::seconds{1};
         try {
-          retry = Read();
+          retryAfter = Read();
         } catch (winrt::hresult_error const &ex) {
           {
             std::lock_guard lock(mutex_);
@@ -423,8 +523,8 @@ class Audio final {
         auto signalled = [&] { return stop_ || wake_->changed; };
         // Failed reads and endpoint activation may have no notification to
         // wake the worker again. Retry only until the audio state recovers.
-        if (retry)
-          wake_->cv.wait_for(lock, std::chrono::seconds(1), signalled);
+        if (retryAfter.count())
+          wake_->cv.wait_for(lock, retryAfter, signalled);
         else
           wake_->cv.wait(lock, signalled);
         wake_->changed = false;
@@ -450,6 +550,8 @@ class Audio final {
       master_->UnregisterControlChangeNotify(volumeObserver_.get());
     volumeObserver_ = nullptr;
     master_ = nullptr;
+    UnbindInputVolume();
+    inputVolumeId_.clear();
     enumerator_ = nullptr;
     if (apartment)
       winrt::uninit_apartment();
@@ -460,7 +562,7 @@ public:
   Audio(Audio const &) = delete;
   Audio &operator=(Audio const &) = delete;
   ~Audio() { Stop(); }
-  void Start(std::function<void()> publish) {
+  void Start(std::function<void()> publish, bool inputVolumeEnabled = false) {
     publish_ = std::move(publish);
     {
       std::lock_guard lock(volumeFeed_->mutex);
@@ -468,6 +570,7 @@ public:
       volumeFeed_->active = true;
     }
     stop_ = false;
+    inputVolumeEnabled_ = inputVolumeEnabled;
     worker_ = std::thread([this] { Run(); });
   }
   void Stop() {
@@ -494,12 +597,12 @@ public:
       std::lock_guard lock(mutex_);
       commands_.push_back(std::move(command));
     }
-    {
-      std::lock_guard lock(wake_->mutex);
-      wake_->changed = true;
-    }
-    wake_->cv.notify_one();
+    wake_->Signal();
     return serial;
+  }
+  void EnableInputVolume(bool enabled) {
+    inputVolumeEnabled_ = enabled;
+    wake_->Signal();
   }
   Snapshot Get() {
     Snapshot state;

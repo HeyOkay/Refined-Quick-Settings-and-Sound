@@ -376,9 +376,9 @@ class QuickPage {
     shortcuts_.Spacing(7.2);
     C::Grid::SetColumn(shortcuts_, 2);
     row.Children().Append(shortcuts_);
-    display_ = ShortcutButton(sound::QuickShortcut::Display);
+    display_ = ShortcutButton(sound::QuickShortcut::Display, 16);
     NightButton();
-    shortcutButtons_ = {{sound::QuickShortcut::Display, display_}};
+    shortcutButtons_.clear();
     visibleShortcuts_.clear();
     settingsRow_ = row;
     return row;
@@ -414,7 +414,7 @@ class QuickPage {
     C::ToolTipService::SetToolTip(b, winrt::box_value(name));
     return b;
   }
-  C::Button ShortcutButton(sound::QuickShortcut action) {
+  C::Button ShortcutButton(sound::QuickShortcut action, double iconSize = 13.6) {
     using S = sound::QuickShortcut;
     PCWSTR name = nullptr, uri = nullptr;
     wchar_t glyph = 0;
@@ -453,7 +453,7 @@ class QuickPage {
       name = sound::Text(L"Graphics", L"Графика", L"Gráficos", L"Grafik",
                          L"Elementos gráficos", L"图形");
       uri = L"ms-settings:display-advancedgraphics";
-      glyph = 0xe7f4;
+      glyph = 0xe950; // Component
       break;
     case S::NetworkSettings:
       name = sound::Text(L"Advanced network settings", L"Сетевые параметры",
@@ -479,7 +479,7 @@ class QuickPage {
     }
     auto button = IconButton(name);
     button.Margin({4, 0, 4, 0});
-    button.Content(SymbolGlyph(view_, glyph, 13.6));
+    button.Content(SymbolGlyph(view_, glyph, iconSize));
     Keep(button.Click(winrt::auto_revoke, [uri](auto &&, auto &&) {
       ShellExecuteW(nullptr, L"open", uri, nullptr, nullptr, SW_SHOWNORMAL);
     }));

@@ -1,9 +1,16 @@
 #pragma once
-// Lucide ISC assets: the mixer settings glyph and ethernet-port for the
-// taskbar network icon; all other glyphs are system Segoe Fluent Icons via
-// SymbolGlyph().
+// Lucide ISC assets are used for the mixer and the taskbar Ethernet icon.
+// The two vertical sliders are shared by the Sound device settings buttons.
 namespace sound {
 inline PCWSTR IconMarkup(std::wstring_view name) {
+  if (name == L"device-settings")
+    return LR"icon(
+<Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2"
+      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+      Data="M7 3V5 M7 11V21 M17 3V13 M17 19V21
+            M7 6 A2 2 0 1 1 7 10 A2 2 0 1 1 7 6 Z
+            M17 14 A2 2 0 1 1 17 18 A2 2 0 1 1 17 14 Z"/>
+)icon";
   if (name == L"sliders-horizontal")
     return LR"icon(<Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M10 5H3"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M12 19H3"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M14 3v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M16 17v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 12h-9"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 19h-5"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M21 5h-7"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M8 10v4"/><Path Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M8 12H3"/>)icon";
   return L"";
