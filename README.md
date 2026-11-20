@@ -15,18 +15,25 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 **Quick Settings**
 
 - Choose up to five **Additional shortcuts** to the right of **Settings**, including Notifications, Graphics, Advanced network settings, Power and Windows Update. Empty slots and duplicate shortcuts are skipped. The Display shortcut is also skipped when the brightness row already has a Display button.
-- The brightness row places the native Windows slider, or the DDC/CI slider, between Night light and Display settings. Night light uses the native quick action when available and opens its settings otherwise.
-- **Display brightness** defaults to **Auto**. It keeps the Windows slider when available or adds one for a monitor with a usable DDC/CI range. **Disable** hides the brightness row.
-- Choose the default or pill shape independently for Quick Settings tiles and closed Sound selection fields under **Appearance**.
-- Set **Rows of tiles** to 1–4. Pages follow the number of available tiles. The override requires the ControlCenter build from Windows 26300.9974.
+- **Display brightness** uses the Windows slider in the default **Auto** mode and falls back to DDC/CI on compatible monitors with DDC/CI enabled. **Disable** hides the brightness row.
+- The mod places Night light and Display settings beside the brightness slider. If the native slider cannot be moved, Windows keeps its original row. Night light uses the native quick action when available and opens Night light settings otherwise.
+- On devices with a battery, the battery button moves into the **Settings** row.
+
+- **Rows of tiles** sets 1–4 rows per page with Windows pagination. If the mod cannot recognize the tile grid layout, Windows uses its default row count.
+- **Tile shape** rounds the outer edges of Quick Settings tiles in **Pills** mode.
 
 **Sound**
 
 - The "Sound output" page is now simply "Sound".
 - Change the output and input devices and the spatial sound provider from dropdown lists.
 - Below them is a reworked Volume mixer for the apps. It starts collapsed the first time Sound opens in each ShellHost process and remembers its state on subsequent openings.
+- **Microphone volume** defaults to **Off**. **Auto** adds a volume slider above system volume when the selected microphone has an adjustable level. The button on the left mutes and unmutes the microphone without changing its level.
+- **Microphone settings shortcut** shows the volume percentage by default. **Device settings** replaces it with a button for the selected microphone's Windows settings.
+- **Sound settings shortcut** puts the Windows Sound settings button beside system volume by default. **None (Percentage)** shows the volume percentage. **Device settings** opens the selected output device's settings. Both modes move the Sound settings button to the header.
+- **Spatial sound** controls whether the spatial audio menu appears. It is on by default.
+- **Sound field shape** rounds the closed output, input and spatial sound selectors in **Pills** mode.
 - Volume sliders show the new value when dragged or scrolled. The default wheel step is 2 percentage points.
-- Press an app's icon to mute and restore it, or its volume number to set it to 100.
+- Press a volume number to set that slider to 100. The app icon mutes or restores the app.
 - **Hide from the volume mixer** takes app names or executable names, one per row. Hidden apps keep playing audio.
 
 **Taskbar**
@@ -37,9 +44,11 @@ Everything runs inside the shell's own panels (ShellHost). The system Acrylic, f
 - **Device Manager** is available in the network and battery icon menus.
 - **Alternative icons** includes the animated volume and wired network icons from the original mod. Each location has its own switch. Switching one off uses the Windows icon there.
 
+The interface is available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese.
+
 ## Compatibility
 
-Windows 11 24H2 or later (Quick Settings hosted by ShellHost), x86-64 (ARM64 is untested). Development testing was performed on build **26300**, primarily at **125%** display scale. Other builds and scales need validation; this mod depends on internal shell XAML elements and symbols that Windows updates can change. Added labels are available in English, Russian, Spanish, German, Brazilian Portuguese and Simplified Chinese. DDC/CI brightness requires a compatible monitor with DDC/CI enabled in its settings.
+Requires Windows 11 24H2 or later (x64).
 
 Disable other mods or styling rules that modify the same Quick Settings, Sound or taskbar volume elements.
 

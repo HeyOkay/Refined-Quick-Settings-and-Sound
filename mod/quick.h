@@ -5,18 +5,20 @@
 #include "exit.h"
 #include "quick-volume.h"
 #include "ddc.h"
+#include "row-binding.h"
+#include <psapi.h>
 #include <cstring>
 #include <winrt/Windows.UI.Text.h>
 #include <winrt/Windows.UI.Xaml.Automation.Peers.h>
 #include <winrt/Windows.UI.Xaml.Automation.Provider.h>
 namespace native {
-// This ControlCenter build keeps page height, count and offsets in the native
-// PaginatedGridView. Resolve its methods only for the image whose ABI was checked.
+// Keep the native PaginatedGridView in charge of page height, count and offsets.
 using SetQuickRows = void(WINAPI *)(void *, int);
 using UpdateQuickExtent = void(WINAPI *)(void *);
 inline SetQuickRows originalSetQuickRows = nullptr;
 inline UpdateQuickExtent updateQuickExtent = nullptr;
-inline void *quickGridVtable = nullptr;
+inline std::optional<quick_rows::Layout> quickRowsLayout;
+inline uintptr_t quickRowsImage = 0;
 struct QuickRowsOverride {
   int nativeRows;
   int configuredRows;
@@ -56,23 +58,24 @@ inline void WINAPI KeepQuickRows(void *self, int rows) {
     updateQuickExtent(self);
 }
 inline void HookQuickRows(HMODULE dll) {
-  auto image = reinterpret_cast<BYTE *>(dll);
-  auto dos = reinterpret_cast<IMAGE_DOS_HEADER *>(image);
-  auto nt = reinterpret_cast<IMAGE_NT_HEADERS *>(image + dos->e_lfanew);
-  constexpr BYTE signature[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xd9,
-                                0x39, 0x91, 0xa8, 0, 0, 0, 0x74, 0x5a, 0x89, 0x91};
-  if (nt->FileHeader.TimeDateStamp != 1878679008 || nt->OptionalHeader.SizeOfImage != 4313088 ||
-      std::memcmp(image + 0x29424c, signature, sizeof(signature)) != 0) {
-    Wh_Log(L"Native Quick Settings row override unavailable for this ControlCenter image");
+  MODULEINFO module{};
+  if (!K32GetModuleInformation(GetCurrentProcess(), dll, &module, sizeof(module)))
+    return;
+  auto base = reinterpret_cast<uintptr_t>(module.lpBaseOfDll);
+  auto layout = quick_rows::Resolve(
+      {static_cast<const uint8_t*>(module.lpBaseOfDll), module.SizeOfImage}, base);
+  if (!layout) {
+    Wh_Log(L"Quick Settings row override unavailable for this ControlCenter layout");
     return;
   }
-  auto setter = reinterpret_cast<SetQuickRows>(image + 0x29424c);
-  if (*reinterpret_cast<void **>(image + 0x37f518) != image + 0x1018c0)
-    return;
-  updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(image + 0x2944d0);
-  quickGridVtable = image + 0x37f518;
-  if (!WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows))
+  auto setter = reinterpret_cast<SetQuickRows>(base + layout->setter);
+  if (!WindhawkUtils::SetFunctionHook(setter, KeepQuickRows, &originalSetQuickRows)) {
     originalSetQuickRows = nullptr;
+    return;
+  }
+  updateQuickExtent = reinterpret_cast<UpdateQuickExtent>(base + layout->extent);
+  quickRowsImage = base;
+  quickRowsLayout = layout;
 }
 // Quick Settings main page (ControlCenter.ControlCenterView). L1Grid holds a
 // light Border spanning TogglesGroup + SlidersGroup, then FooterGrid
@@ -373,9 +376,9 @@ class QuickPage {
     shortcuts_.Spacing(7.2);
     C::Grid::SetColumn(shortcuts_, 2);
     row.Children().Append(shortcuts_);
-    display_ = ShortcutButton(sound::QuickShortcut::Display);
+    display_ = ShortcutButton(sound::QuickShortcut::Display, 16);
     NightButton();
-    shortcutButtons_ = {{sound::QuickShortcut::Display, display_}};
+    shortcutButtons_.clear();
     visibleShortcuts_.clear();
     settingsRow_ = row;
     return row;
@@ -411,7 +414,7 @@ class QuickPage {
     C::ToolTipService::SetToolTip(b, winrt::box_value(name));
     return b;
   }
-  C::Button ShortcutButton(sound::QuickShortcut action) {
+  C::Button ShortcutButton(sound::QuickShortcut action, double iconSize = 13.6) {
     using S = sound::QuickShortcut;
     PCWSTR name = nullptr, uri = nullptr;
     wchar_t glyph = 0;
@@ -450,7 +453,7 @@ class QuickPage {
       name = sound::Text(L"Graphics", L"Графика", L"Gráficos", L"Grafik",
                          L"Elementos gráficos", L"图形");
       uri = L"ms-settings:display-advancedgraphics";
-      glyph = 0xe7f4;
+      glyph = 0xe950; // Component
       break;
     case S::NetworkSettings:
       name = sound::Text(L"Advanced network settings", L"Сетевые параметры",
@@ -476,7 +479,7 @@ class QuickPage {
     }
     auto button = IconButton(name);
     button.Margin({4, 0, 4, 0});
-    button.Content(SymbolGlyph(view_, glyph, 13.6));
+    button.Content(SymbolGlyph(view_, glyph, iconSize));
     Keep(button.Click(winrt::auto_revoke, [uri](auto &&, auto &&) {
       ShellExecuteW(nullptr, L"open", uri, nullptr, nullptr, SW_SHOWNORMAL);
     }));
@@ -976,8 +979,13 @@ class QuickPage {
       }
       bright_.Visibility(moved ? X::Visibility::Collapsed : X::Visibility::Visible);
     }
-    // Both backends use the same Night light / Display buttons and geometry.
-    auto shortcuts = sound::QuickShortcuts(settings_.quickShortcuts, show);
+    // A native row kept in place can already provide its own Display button.
+    bool nativeDisplay = !moved && nativeVisible && Find(nativeRow, [](auto const &e) {
+      auto button = e.template try_as<C::Button>();
+      return button && button.Visibility() == X::Visibility::Visible &&
+             String(button.CommandParameter()) == L"ms-settings:display";
+    });
+    auto shortcuts = sound::QuickShortcuts(settings_.quickShortcuts, show || nativeDisplay);
     bool changed = shortcuts != visibleShortcuts_;
     if (changed) {
       shortcuts_.Children().Clear();
@@ -1419,32 +1427,27 @@ class QuickPage {
     }
   }
   void TileRows(C::Grid const &l1) {
-    if (!originalSetQuickRows)
+    if (!originalSetQuickRows || !quickRowsLayout)
       return;
     auto paginated = Find(Named(l1, L"TogglesGroup"), [](auto const &e) {
       return Class(e) == L"ControlCenter.PaginatedGridView";
     });
     if (!paginated || paginated == tiledView_.get())
       return;
-    // The IPaginatedGridView subobject at +0x18 is returned by this image's
-    // QueryInterface. Verify the complete object's vtable before calling it.
-    constexpr GUID iid{0xad3ad37e, 0x5360, 0x5f2c, {0x86, 0x50, 0x6d, 0xd9, 0x61, 0x6e, 0x1d, 0x71}};
-    winrt::com_ptr<::IUnknown> iface;
-    if (FAILED(winrt::get_unknown(paginated)->QueryInterface(iid, iface.put_void())))
+    auto binding = quick_rows::BindGrid(paginated, quickRowsImage, *quickRowsLayout);
+    if (!binding)
       return;
-    auto self = reinterpret_cast<BYTE *>(iface.get()) - 0x18;
-    if (*reinterpret_cast<void **>(self) != quickGridVtable)
-      return;
-    int rows = *reinterpret_cast<int const *>(self + 0xa8);
+    auto self = binding->instance;
+    int rows = binding->rows;
     auto grid = Named(paginated, L"RootGridView").try_as<C::GridView>();
-    if (!grid || (rows != 1 && rows != 2))
+    if (!grid)
       return;
     // Until this grid is tracked, native calls leave the row count untouched.
     if (!TrackQuickRows(self, rows, settings_.quickActionRows))
       return;
     try {
-      journal_.undo.push_back([iface] {
-        RestoreQuickRows(reinterpret_cast<BYTE *>(iface.get()) - 0x18);
+      journal_.undo.push_back([binding = std::move(*binding)] {
+        RestoreQuickRows(binding.instance);
       });
     } catch (...) {
       RestoreQuickRows(self);

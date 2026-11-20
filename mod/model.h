@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cwctype>
 #include <cstdint>
@@ -62,18 +63,6 @@ inline void AddHiddenApp(std::vector<std::wstring> &apps, std::wstring_view name
   if (first != name.npos)
     apps.push_back(Lower(std::wstring(name.substr(first, name.find_last_not_of(L" \t\r\n") - first + 1))));
 }
-inline std::vector<std::wstring> ParseHidden(std::wstring const &text) {
-  std::vector<std::wstring> result;
-  size_t start = 0;
-  while (start < text.size()) {
-    auto end = text.find_first_of(L";,\r\n", start);
-    if (end == text.npos)
-      end = text.size();
-    AddHiddenApp(result, std::wstring_view(text).substr(start, end - start));
-    start = end + 1;
-  }
-  return result;
-}
 inline int VolumeWheelStep(int value) {
   return value >= 1 && value <= 100 ? value : 2;
 }
@@ -95,6 +84,9 @@ inline bool Hidden(std::vector<std::wstring> const &patterns, std::wstring const
                      [&](auto const &p) { return text.find(p) != text.npos; });
 }
 inline float Clamp(float value) { return std::clamp(value, 0.f, 1.f); }
+inline double EndpointVolumePercent(float value, bool muted) {
+  return muted ? 0 : std::round(Clamp(value) * 100);
+}
 inline int VolumeIcon(float value, bool mute) {
   return mute ? -1 : value <= 0 ? 0 : value <= .33f ? 1 : value <= .66f ? 2 : 3;
 }
@@ -119,10 +111,63 @@ struct Snapshot {
   std::wstring outputId, inputId, error;
   float master = 0;
   bool muted = false, masterAvailable = false;
+  float inputVolume = 0;
+  bool inputVolumeAvailable = false, inputMuteAvailable = false, inputMuted = false;
   unsigned long long revision = 0;
   unsigned long long applied = 0;
 };
-enum class Action { MasterVolume, MasterMute, ToggleEndpointMute, Input, Refresh };
+enum class InputVolumeProbe { Idle, Poll, Failed };
+inline bool UnsupportedInputVolume(HRESULT result) {
+  return result == E_NOINTERFACE || result == E_NOTIMPL ||
+         result == HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+}
+class InputVolumeRetry {
+  unsigned failures_ = 0;
+
+public:
+  std::chrono::seconds Delay(InputVolumeProbe probe) {
+    if (probe == InputVolumeProbe::Failed) {
+      auto delay = std::chrono::seconds{1 << failures_};
+      failures_ = std::min(failures_ + 1, 3u);
+      return delay;
+    }
+    failures_ = 0;
+    return std::chrono::seconds{probe == InputVolumeProbe::Poll ? 1 : 0};
+  }
+};
+enum class SystemVolumeRight { SoundSettings, Percentage, DeviceSettings };
+struct SoundOptions {
+  bool microphoneAuto = false, microphoneDeviceSettings = false, spatialSound = true;
+  SystemVolumeRight systemVolumeRight = SystemVolumeRight::SoundSettings;
+  bool SettingsInHeader() const { return systemVolumeRight != SystemVolumeRight::SoundSettings; }
+  bool operator==(SoundOptions const &) const = default;
+};
+inline SoundOptions ParseSoundOptions(std::wstring_view microphone, std::wstring_view microphoneRight,
+                                      std::wstring_view systemRight, std::wstring_view spatial) {
+  SoundOptions options;
+  options.microphoneAuto = microphone == L"auto";
+  options.microphoneDeviceSettings = microphoneRight == L"deviceSettings";
+  options.spatialSound = spatial != L"disabled";
+  if (systemRight == L"percentage")
+    options.systemVolumeRight = SystemVolumeRight::Percentage;
+  else if (systemRight == L"deviceSettings")
+    options.systemVolumeRight = SystemVolumeRight::DeviceSettings;
+  return options;
+}
+inline bool ShowMicrophoneRow(SoundOptions options, Snapshot const &state) {
+  return options.microphoneAuto && !state.inputId.empty() && state.inputVolumeAvailable;
+}
+inline bool CanResetVolume(double value, bool showMuteAtZero = false) {
+  return value >= 0 && value < 100 && (value > 0 || !showMuteAtZero);
+}
+inline std::wstring AudioDevicePropertiesUri(std::wstring_view id) {
+  if (id.empty())
+    return {};
+  return std::wstring(L"ms-settings:sound-properties?endpointId=").append(id);
+}
+enum class Action {
+  MasterVolume, MasterMute, ToggleEndpointMute, Input, InputVolume, InputMute, Refresh
+};
 struct Command {
   Action action = Action::Refresh;
   std::wstring id;
